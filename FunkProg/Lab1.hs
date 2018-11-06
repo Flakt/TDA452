@@ -6,8 +6,10 @@ power n k | k < 0 = error "power : negative argument"
 power n 0 = 1
 power n k = n * power n (k - 1)
 
--- listOfN is produced by list comprehension where the list size is determined
--- by k and the list content by n
+{-  
+    listOfN is produced by list comprehension  
+    where the list size is determined
+    by k and the list content by n -}
 power1 :: Integer -> Integer -> Integer
 power1 n k | k < 0 = error "power : negative argument"
 power1 n 0 = 1
@@ -24,10 +26,12 @@ power2 n k
     | odd k = n * (n^(k - 1))
 
 -- A
-case1 = (2,2)           -- Generic case
-case2 = (2,-2)          -- Negative argument should cause an error
-case3 = (4.2, 8.9)      -- Case to see if calculation can handle floats
-case4 = (3.2312, -9.8)  -- A negative case for floats
+
+cases = [     
+    (2,2),          -- A basic case 
+    (3,0),          -- Test that base case functions alone
+    (-3,5)          -- Some arbitrary negative base
+    ]
 
 -- B
 -- Checks if power1 and power2 gives the same answer as power
@@ -38,9 +42,8 @@ testCases :: (Integer, Integer) -> Bool
 testCases (n, k) = prop_powers n k
 
 -- C
-cases = [case1, case2, case3, case4]
-testAllCases :: Bool
-testAllCases = and [ testCases x | x <- cases ]
+testAllCases :: [(Integer, Integer)] -> Bool
+testAllCases list = and [ testCases x | x <- list ]
 
 -- D
 -- Negative power should not affect/cancel the testing process
