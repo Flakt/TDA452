@@ -23,18 +23,26 @@ power2 n k
     | even k = (n * n)^(k `div` 2)
     | odd k = n * (n^(k - 1))
 
-case1 = (2,2) -- Generic case
-case2 = (2,-2) -- Negative argument should cause an error
-case3 = (4.2, 8.9) -- Case to see if calculation can handle floats
-case4 = (3.2312, -9.8) -- An negative case for floats
+-- A
+case1 = (2,2)           -- Generic case
+case2 = (2,-2)          -- Negative argument should cause an error
+case3 = (4.2, 8.9)      -- Case to see if calculation can handle floats
+case4 = (3.2312, -9.8)  -- A negative case for floats
 
+-- B
 -- Checks if power1 and power2 gives the same answer as power
 prop_powers :: Integer -> Integer -> Bool
 prop_powers n k = (power n k) == (power1 n k) && (power n k) == (power2 n k)
 
+testCases :: (Integer, Integer) -> Bool
+testCases (n, k) = prop_powers n k
+
+-- C
+cases = [case1, case2, case3, case4]
+testAllCases :: Bool
+testAllCases = and [ testCases x | x <- cases ]
+
+-- D
 -- Negative power should not affect/cancel the testing process
 prop_powers' :: Integer -> Integer -> Bool
 prop_powers' n k = prop_powers n (abs k)
-
-testCases :: (Integer, Integer) -> Bool
-testCases (n, k) = prop_powers n k
