@@ -10,33 +10,25 @@ power n k = n * power n (k - 1)
 
 -- Product on constructed list implementation
 power1 :: Integer -> Integer -> Integer
-power1 n k | k < 0 = error "power : negative argument" 
+power1 n k | k < 0 = error "power : negative argument"
 power1 n k = product listOfN
     where listOfN = take (fromInteger k) [n,n..]
 
 -- Improved (shortened) implementation
 power2 :: Integer -> Integer -> Integer
-power2 n k | k < 0 = error "power : negative argument" 
+power2 n k | k < 0 = error "power : negative argument"
 power2 n 0 = 1
 power2 n k
     | even k = power2 (n * n) (k `div` 2)
     | odd k = n * power2 n (k-1)
 
 -- A
-
-{-
-cases = [     
-    (2,2),          -- A basic case 
-    (3,0),          -- Test that base case functions alone
-    (-3,5)          -- Some arbitrary negative base
-    ]
--}
 cases = [ (n,k) | n <- [-10,-9..10], k <- [0..10]]
 
 -- B
 -- Checks if power1 and power2 gives the same answer as power
 prop_powers :: Integer -> Integer -> Bool
-prop_powers n k =   power n k == power1 n k && 
+prop_powers n k =   power n k == power1 n k &&
                     power n k == power2 n k
 
 -- Tests the power function with a 2-tuple of integers
