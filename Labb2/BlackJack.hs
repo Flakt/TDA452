@@ -1,7 +1,7 @@
 module BlackJack where
 import Cards
 import RunGame
-import Test.QuickCheck
+import Test.QuickCheck hiding (shuffle)
 
 {-
 3.1 A0 evaluation of size
@@ -67,8 +67,89 @@ valueHandBest :: Hand -> Integer
 valueHandBest hand 
     | valueHand hand > 21 = valueAceValue hand 1
     | otherwise           = valueHand hand            
+
+-- B1
+
+-- | Given two hands, put the first one on top of the other
+-- Seen as two lists, a <+ b = [a0..an] <+ [b0..bn] = [a0..an,b0..bn]  
+(<+) :: Hand -> Hand -> Hand
+a (<+) b = Empty -- TODO
+
+prop_onTopOf_assoc :: Hand -> Hand -> Hand -> Bool
+prop_onTopOf_assoc a b c = 
+    a <+ (b <+ c) == (a <+ b) <+ c
+
+prop_size_onTopOf :: Hand -> Hand -> Bool
+prop_size_onTopOf a b = 
+    size a + size b == size (a <+ b)
     
-    
+-- B2
+
+-- | Returns a full deck of 52 cards (typed as a hand)
+fullDeck :: Hand
+fullDeck = Empty -- TODO
+
+prop_fullDeck_size :: Bool
+prop_fullDeck_size = size fullDeck == 52
+
+prop_fullDeck_value :: Bool
+prop_fullDeck_value = valueHand fullDeck ==
+    4 * suitTotalValue
+
+-- | Helper function, returning a full suit of 13 cards
+fullSuit :: Hand
+fullSuit = Empty -- TODO
+
+prop_fullSuit_size :: Bool
+prop_fullSuit_size = size fullSuit == 13
+
+prop_fullSuit_value :: Bool
+prop_fullSuit_value = valueHand fullSuit ==
+    suitTotalValue
+
+suitTotalValue = 11 + (10 * 3) + sum [9,8 .. 2]
+
+-- B3
+
+-- | Given a deck and a hand, draws one card from the deck and puts it into
+-- the hand, returning (new_deck, new_hand)
+-- returns error if the deck is empty
+draw :: Hand -> Hand -> (Hand, Hand)
+draw Empty hand = error "draw: deck is empty"
+draw deck hand = (Empty, Empty) -- Todo
+
+-- check that the total value is the same before and after drawing
+prop_draw_valueDiff :: Hand -> Hand -> Bool
+prop_draw_valueDiff deck hand = 
+     valueHand deck + valueHand hand == valueHand newDeck + valueHand newHand
+     where 
+        (newDeck, newHand) = draw deck hand 
+
+-- B4
+
+-- | Generates a hand for the bank
+playBank :: Hand -> Hand
+playBank deck = 
+    drawBank deck Empty
+
+-- | Helper function for playing the bank
+drawBank :: Hand -> Hand -> Hand
+drawBank deck hand = newHand -- TODO
+
+-- Tests that the bank always draws while having a value 15 or less
+-- Thus the greatest possible value is 15 + 10 and the smallest is 16
+prop_playBank :: Hand -> Bool
+prop_playBank deck =
+    val <= 25 && val >= 16
+    where val = valueHand playBank
+
+-- B5
+
+-- | Given a StdGen and a hand of cards, shuffle the cards
+shuffle :: StdGen -> Hand -> Hand
+shuffle gen hand = Empty -- TODO
+
+
 
 ------------------------------Tests------------------------------------------
 
