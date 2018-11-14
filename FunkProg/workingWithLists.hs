@@ -70,3 +70,26 @@ qsort (x:xs) = qsort smaller ++ [x] ++ qsort bigger
   where
     smaller = [x' | x' <- xs, x' < x]
     bigger  = [x' | x' <- xs, x' > x]
+
+-- | insert a new element at the right position in a sorted list
+insert :: Ord a => a -> [a] -> [a]
+insert x [] = [x]
+insert x (x':xs) | x<=x' = x:x':xs
+                     | otherwise = x':insert x xs
+
+isSorted [] = True
+isSorted [x] = True
+isSorted (x1:x2:xs) = x1<=x2 && isSorted (x2:xs)
+
+prop_insert :: Int -> [Int] -> Property
+prop_insert x xs = isSorted xs ==> isSorted (insert x xs)
+-- QuickCheck said "Gave up! Passed only 73 tests.". We will return to this.
+-- in a later lecture.
+
+-- | Insertion sort (sort a list by using insert)
+isort :: Ord a => [a] -> [a]
+isort [] = []
+isort (x:xs) = insert x (isort xs)
+
+prop_qsort :: [Int] -> Bool
+prop_qsort xs = qsort xs == isort xs
