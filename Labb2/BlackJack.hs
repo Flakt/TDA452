@@ -22,6 +22,10 @@ empty = Empty
 
 -- A2
 -- | Returns the value of a hand (ace = 11)
+
+value :: Hand -> Integer
+value = valueHand
+
 valueHand :: Hand -> Integer
 valueHand Empty = 0
 valueHand (Add card hand) = valueCard card + valueHand hand
@@ -148,20 +152,25 @@ prop_draw_size deck hand =
 -- B4
 
 -- | Generates a hand for the bank
---playBank :: Hand -> Hand
---playBank deck =
---    drawBank deck Empty
+playBank :: Hand -> Hand
+playBank deck =
+    drawBank deck Empty
 
 -- | Helper function for playing the bank
---drawBank :: Hand -> Hand -> Hand
--- deck hand = newHand -- TODO
+drawBank :: Hand -> Hand -> Hand
+drawBank deck hand 
+    | value hand >= 16 = hand    
+    | otherwise = drawBank newDeck newHand -- TODO actually draw
+    where 
+        (newDeck, newHand) = draw deck hand
 
 -- Tests that the bank always draws while having a value 15 or less
 -- Thus the greatest possible value is 15 + 10 and the smallest is 16
---prop_playBank :: Hand -> Bool
---prop_playBank deck =
---    val <= 25 && val >= 16
---    where val = valueHand playBank
+prop_playBank :: Hand -> Bool
+prop_playBank deck =
+    value deck < 16 ||  -- guard against deck which the bank can't play with  
+    (val <= 25 && val >= 16)
+    where val = value (playBank deck)
 
 -- B5
 
