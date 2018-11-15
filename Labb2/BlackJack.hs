@@ -1,7 +1,7 @@
 module BlackJack where
 import Cards
 import RunGame
-import Test.QuickCheck hiding (shuffle)
+import Test.QuickCheck
 
 {-
 3.1 A0 evaluation of size
@@ -75,7 +75,7 @@ valueHandBest hand
 (<+) :: Hand -> Hand -> Hand
 (<+) Empty hand              = hand
 (<+) hand Empty              = hand
-(<+) (Add card hand1) hand2  = (Add card (hand1 <+ hand2))
+(<+) (Add card hand1) hand2  = Add card (hand1 <+ hand2)
 
 prop_onTopOf_assoc :: Hand -> Hand -> Hand -> Bool
 prop_onTopOf_assoc a b c =
@@ -89,10 +89,10 @@ prop_size_onTopOf a b =
 
 -- | Returns a full deck of 52 cards (typed as a hand)
 fullDeck :: Hand
-fullDeck = foldr (<+) empty ([fullSuit Spades,
+fullDeck = foldr (<+) empty [fullSuit Spades,
                               fullSuit Hearts,
                               fullSuit Clubs,
-                              fullSuit Diamonds])
+                              fullSuit Diamonds]
 
 prop_fullDeck_size :: Bool
 prop_fullDeck_size = size fullDeck == 52
@@ -104,11 +104,11 @@ prop_fullDeck_value = valueHand fullDeck ==
 -- | Helper function, returning a full given suit of 13 cards
 fullSuit :: Suit -> Hand
 fullSuit suit = foldr (<+) empty (
-                [(Add (Card (Numeric n) suit) Empty) | n <- [2..10]] ++
-                [(Add (Card Jack suit) Empty),
-                (Add (Card Queen suit) Empty),
-                (Add (Card King suit) Empty),
-                (Add (Card Ace suit) Empty)])
+                [Add (Card (Numeric n) suit) Empty | n <- [2..10]] ++
+                [Add (Card Jack suit) Empty,
+                Add (Card Queen suit) Empty,
+                Add (Card King suit) Empty,
+                Add (Card Ace suit) Empty])
 
 prop_fullSuit_size :: Bool
 prop_fullSuit_size = size (fullSuit Spades) == 13
@@ -126,14 +126,24 @@ suitTotalValue = 11 + (10 * 4) + sum [9,8 .. 2]
 -- returns error if the deck is empty
 draw :: Hand -> Hand -> (Hand, Hand)
 draw Empty hand = error "draw: deck is empty"
-draw deck hand = (Empty, Empty) -- Todo
+draw (Add card deck) hand = 
+    (deck, Add card Empty <+ hand)
 
 -- check that the total value is the same before and after drawing
 prop_draw_valueDiff :: Hand -> Hand -> Bool
 prop_draw_valueDiff deck hand =
-     valueHand deck + valueHand hand == valueHand newDeck + valueHand newHand
-     where
+    size deck == 0 || -- guard against errors when using QuickCheck
+    valueHand deck + valueHand hand == valueHand newDeck + valueHand newHand
+    where
         (newDeck, newHand) = draw deck hand
+
+-- check that the size is changed appropriately
+prop_draw_size :: Hand -> Hand -> Bool
+prop_draw_size deck hand = 
+    size deck == 0 || -- guard against errors when using QuickCheck
+    ((size newDeck + 1) == size deck) &&
+    (size newHand == (size hand + 1))
+    where (newDeck, newHand) = draw deck hand 
 
 -- B4
 
@@ -172,7 +182,7 @@ cardAce     = Card Ace Hearts
 cardJack    = Card Jack Hearts
 
 hand10      = Add card10 Empty
-hand12      = Add card2 Empty
+hand2      = Add card2 Empty
 hand32or12  = Add cardAce (Add cardAce (Add card10 Empty))
 hand22or2   = Add cardAce (Add cardAce Empty)
 hand21      = Add cardAce (Add cardJack Empty)
