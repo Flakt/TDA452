@@ -64,7 +64,8 @@ gameOver hand = valueHand hand > 21 &&
 -- | Returns the winners (aces = 11 or 1 if needed)
 winner :: Hand -> Hand -> Player
 winner guest bank
-    | valueHandBest guest > valueHandBest bank = Guest
+    | not (gameOver guest) && 
+      valueHandBest guest > valueHandBest bank = Guest
     | otherwise = Bank
 
 -- | Returns the best possible value of a hand (ace = 11 or 1  if needed)
@@ -121,9 +122,9 @@ playBank deck =
 drawBank :: Hand -> Hand -> Hand
 drawBank deck hand 
     | value hand >= 16 = hand    
-    | otherwise = drawBank newDeck hand
+    | otherwise = drawBank newDeck newHand
     where 
-        (newDeck, hand) = draw deck hand
+        (newDeck, newHand) = draw deck hand
 
 
 -- B5
@@ -216,3 +217,28 @@ prop_onTopOf_assoc a b c =
 prop_size_onTopOf :: Hand -> Hand -> Bool
 prop_size_onTopOf a b =
     size a + size b == size (a <+ b)
+
+prop_shuffle_sameCards :: StdGen -> Card -> Hand -> Bool
+prop_shuffle_sameCards gen card hand =
+    card `belongsTo` hand == card `belongsTo` shuffle gen hand
+
+belongsTo :: Card -> Hand -> Bool
+card `belongsTo` Empty = False
+card `belongsTo` (Add card' hand) = card == card' || card `belongsTo` hand
+
+prop_size_shuffle :: StdGen -> Hand -> Bool
+prop_size_shuffle gen deck = size deck == size (shuffle gen deck)
+
+implementation = Interface
+  { iEmpty    = empty
+  , iFullDeck = fullDeck
+  , iValue    = value
+  , iGameOver = gameOver
+  , iWinner   = winner 
+  , iDraw     = draw
+  , iPlayBank = playBank
+  , iShuffle  = shuffle
+  }
+
+main :: IO ()
+main = runGame implementation
