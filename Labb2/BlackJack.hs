@@ -1,7 +1,8 @@
 module BlackJack where
 import Cards
 import RunGame
-import Test.QuickCheck
+import Test.QuickCheck hiding (shuffle)
+import System.Random
 
 {-
 3.1 A0 evaluation of size
@@ -137,17 +138,17 @@ draw (Add card deck) hand =
 prop_draw_valueDiff :: Hand -> Hand -> Bool
 prop_draw_valueDiff deck hand =
     size deck == 0 || -- guard against errors when using QuickCheck
-    valueHand deck + valueHand hand == valueHand newDeck + valueHand newHand
+    valueHand deck + valueHand hand == valueHand newDeck + valueHand hand
     where
-        (newDeck, newHand) = draw deck hand
+        (newDeck, hand) = draw deck hand
 
 -- check that the size is changed appropriately
 prop_draw_size :: Hand -> Hand -> Bool
 prop_draw_size deck hand = 
     size deck == 0 || -- guard against errors when using QuickCheck
     ((size newDeck + 1) == size deck) &&
-    (size newHand == (size hand + 1))
-    where (newDeck, newHand) = draw deck hand 
+    (size hand == (size hand + 1))
+    where (newDeck, hand) = draw deck hand 
 
 -- B4
 
@@ -160,9 +161,9 @@ playBank deck =
 drawBank :: Hand -> Hand -> Hand
 drawBank deck hand 
     | value hand >= 16 = hand    
-    | otherwise = drawBank newDeck newHand -- TODO actually draw
+    | otherwise = drawBank newDeck hand
     where 
-        (newDeck, newHand) = draw deck hand
+        (newDeck, hand) = draw deck hand
 
 -- Tests that the bank always draws while having a value 15 or less
 -- Thus the greatest possible value is 15 + 10 and the smallest is 16
@@ -175,10 +176,32 @@ prop_playBank deck =
 -- B5
 
 -- | Given a StdGen and a hand of cards, shuffle the cards
---shuffle :: StdGen -> Hand -> Hand
---shuffle gen hand = Empty -- TODO
+-- The method is to draw a random card from the source and
+-- append it to the hand until the source is empty
+shuffle :: StdGen -> Hand -> Hand
+shuffle gen hand = shuffle' gen hand Empty
 
+shuffle' :: StdGen -> Hand -> Hand -> Hand
+shuffle' gen Empty hand   = hand
+shuffle' gen source hand  =
+    shuffle' gen2 source2 hand2
+    where
+        (gen2, source2, hand2) = drawRandom gen source hand
 
+drawRandom :: StdGen -> Hand -> Hand -> (StdGen, Hand, Hand)
+drawRandom gen deck hand = 
+    (gen2, newDeck, newHand)
+    where 
+        (newDeck, newHand) = drawNth deck hand randomInt
+        (randomInt, gen2) = randomR (0, size deck + (-1)) gen
+
+drawNth :: Hand -> Hand -> Integer -> (Hand, Hand)
+drawNth deck hand 0 = draw deck hand
+drawNth (Add card deck) hand n 
+    | n > 0     = (Add card newDeck, newCard)
+    | otherwise = error "drawNth: drawing from a negative index" 
+    where 
+        (newDeck, newCard) = drawNth deck hand (n + (-1))
 
 ------------------------------Tests------------------------------------------
 
