@@ -181,6 +181,7 @@ prop_playBank deck =
 shuffle :: StdGen -> Hand -> Hand
 shuffle gen hand = shuffle' gen hand Empty
 
+-- | Helper function that recursively empties the source
 shuffle' :: StdGen -> Hand -> Hand -> Hand
 shuffle' gen Empty hand   = hand
 shuffle' gen source hand  =
@@ -188,6 +189,7 @@ shuffle' gen source hand  =
     where
         (gen2, source2, hand2) = drawRandom gen source hand
 
+-- | Draws a random card from a deck
 drawRandom :: StdGen -> Hand -> Hand -> (StdGen, Hand, Hand)
 drawRandom gen deck hand = 
     (gen2, newDeck, newHand)
@@ -195,6 +197,7 @@ drawRandom gen deck hand =
         (newDeck, newHand) = drawNth deck hand randomInt
         (randomInt, gen2) = randomR (0, size deck + (-1)) gen
 
+-- | Draws the nth card from a deck
 drawNth :: Hand -> Hand -> Integer -> (Hand, Hand)
 drawNth deck hand 0 = draw deck hand
 drawNth (Add card deck) hand n 
