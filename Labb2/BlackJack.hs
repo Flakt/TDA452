@@ -82,14 +82,6 @@ valueHandBest hand
 (<+) hand Empty              = hand
 (<+) (Add card hand1) hand2  = Add card (hand1 <+ hand2)
 
-prop_onTopOf_assoc :: Hand -> Hand -> Hand -> Bool
-prop_onTopOf_assoc a b c =
-    a <+ (b <+ c) == (a <+ b) <+ c
-
-prop_size_onTopOf :: Hand -> Hand -> Bool
-prop_size_onTopOf a b =
-    size a + size b == size (a <+ b)
-
 -- B2
 
 -- | Returns a full deck of 52 cards (typed as a hand)
@@ -98,13 +90,6 @@ fullDeck = foldr (<+) empty [fullSuit Spades,
                               fullSuit Hearts,
                               fullSuit Clubs,
                               fullSuit Diamonds]
-
-prop_fullDeck_size :: Bool
-prop_fullDeck_size = size fullDeck == 52
-
-prop_fullDeck_value :: Bool
-prop_fullDeck_value = valueHand fullDeck ==
-    4 * suitTotalValue
 
 -- | Helper function, returning a full given suit of 13 cards
 fullSuit :: Suit -> Hand
@@ -115,15 +100,6 @@ fullSuit suit = foldr (<+) empty (
                 Add (Card King suit) Empty,
                 Add (Card Ace suit) Empty])
 
-prop_fullSuit_size :: Bool
-prop_fullSuit_size = size (fullSuit Spades) == 13
-
-prop_fullSuit_value :: Bool
-prop_fullSuit_value = valueHand (fullSuit Hearts) ==
-    suitTotalValue
-
-suitTotalValue = 11 + (10 * 4) + sum [9,8 .. 2]
-
 -- B3
 
 -- | Given a deck and a hand, draws one card from the deck and puts it into
@@ -133,22 +109,6 @@ draw :: Hand -> Hand -> (Hand, Hand)
 draw Empty hand = error "draw: deck is empty"
 draw (Add card deck) hand = 
     (deck, Add card Empty <+ hand)
-
--- check that the total value is the same before and after drawing
-prop_draw_valueDiff :: Hand -> Hand -> Bool
-prop_draw_valueDiff deck hand =
-    size deck == 0 || -- guard against errors when using QuickCheck
-    valueHand deck + valueHand hand == valueHand newDeck + valueHand hand
-    where
-        (newDeck, hand) = draw deck hand
-
--- check that the size is changed appropriately
-prop_draw_size :: Hand -> Hand -> Bool
-prop_draw_size deck hand = 
-    size deck == 0 || -- guard against errors when using QuickCheck
-    ((size newDeck + 1) == size deck) &&
-    (size hand == (size hand + 1))
-    where (newDeck, hand) = draw deck hand 
 
 -- B4
 
@@ -165,13 +125,6 @@ drawBank deck hand
     where 
         (newDeck, hand) = draw deck hand
 
--- Tests that the bank always draws while having a value 15 or less
--- Thus the greatest possible value is 15 + 10 and the smallest is 16
-prop_playBank :: Hand -> Bool
-prop_playBank deck =
-    value deck < 16 ||  -- guard against deck which the bank can't play with  
-    (val <= 25 && val >= 16)
-    where val = value (playBank deck)
 
 -- B5
 
@@ -208,24 +161,6 @@ drawNth (Add card deck) hand n
 
 ------------------------------Tests------------------------------------------
 
--- Some examples for basic testing
-
-card10      = Card (Numeric 10) Hearts
-card9       = Card (Numeric 9) Hearts
-card2       = Card (Numeric 2) Hearts
-cardAce     = Card Ace Hearts
-cardJack    = Card Jack Hearts
-
-hand10      = Add card10 Empty
-hand2      = Add card2 Empty
-hand32or12  = Add cardAce (Add cardAce (Add card10 Empty))
-hand22or2   = Add cardAce (Add cardAce Empty)
-hand21      = Add cardAce (Add cardJack Empty)
-hand22      = Add card10 (Add card10 (Add card2 Empty)) -- *
-hand32or22  = Add cardAce (Add cardJack (Add card9 (Add card2 Empty))) -- *
-
--- * should always bust
-
 -- | Tests that a hand of n aces counts n aces
 propCountAces :: Integer -> Bool
 propCountAces n =
@@ -235,3 +170,49 @@ propCountAces n =
 handAces :: Integer -> Hand
 handAces n  | n <= 0 = Empty
             | otherwise = Add (Card Ace Hearts) (handAces (n-1))
+
+
+-- Tests that the bank always draws while having a value 15 or less
+-- Thus the greatest possible value is 15 + 10 and the smallest is 16
+prop_playBank :: Hand -> Bool
+prop_playBank deck =
+    value deck < 16 ||  -- guard against deck which the bank can't play with  
+    (val <= 25 && val >= 16)
+    where val = value (playBank deck)
+
+-- check that the total value is the same before and after drawing
+prop_draw_valueDiff :: Hand -> Hand -> Bool
+prop_draw_valueDiff deck hand =
+    size deck == 0 || -- guard against errors when using QuickCheck
+    valueHand deck + valueHand hand == valueHand newDeck + valueHand hand
+    where
+        (newDeck, hand) = draw deck hand
+
+-- check that the size is changed appropriately
+prop_draw_size :: Hand -> Hand -> Bool
+prop_draw_size deck hand = 
+    size deck == 0 || -- guard against errors when using QuickCheck
+    ((size newDeck + 1) == size deck) &&
+    (size hand == (size hand + 1))
+    where (newDeck, hand) = draw deck hand 
+
+-- check that the size of a suit is 13
+prop_fullSuit_size :: Bool
+prop_fullSuit_size = size (fullSuit Spades) == 13
+
+-- check that the total value of a suit is some constant
+prop_fullSuit_value :: Bool
+prop_fullSuit_value = valueHand (fullSuit Hearts) ==
+    suitTotalValue
+
+suitTotalValue = 11 + (10 * 4) + sum [9,8 .. 2]
+
+-- check <+ associativity
+prop_onTopOf_assoc :: Hand -> Hand -> Hand -> Bool
+prop_onTopOf_assoc a b c =
+    a <+ (b <+ c) == (a <+ b) <+ c
+
+-- check <+ retains size correctly
+prop_size_onTopOf :: Hand -> Hand -> Bool
+prop_size_onTopOf a b =
+    size a + size b == size (a <+ b)
