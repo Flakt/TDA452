@@ -1,3 +1,5 @@
+import Data.Maybe
+
 newtype Sudoku = Sudoku {rows :: [[Maybe Int]]}
     deriving (Show, Eq)
 
@@ -6,9 +8,9 @@ newtype Sudoku = Sudoku {rows :: [[Maybe Int]]}
 -- | Returns a blank 9x9 sudoku grid
 allBlankSudoku :: Sudoku
 allBlankSudoku = 
-    Sudoku [[Nothing | x <- [1..9]] | x <- [1..9]]
+    Sudoku replicate 9 (replicate 9 Nothing)
 
--- B2
+-- A2
 
 -- | Tests if a sudoku confirms to the 9x9 dimensions
 isSudoku :: Sudoku -> Bool
@@ -28,3 +30,12 @@ example =
     , [Nothing,Just 8, Just 3, Nothing,Nothing,Nothing,Nothing,Just 6, Nothing]
     , [Nothing,Nothing,Just 7, Just 6, Just 9, Nothing,Nothing,Just 4, Just 3]
     ]    
+
+-- A3
+isEmpty :: Sudoku -> Bool
+isEmpty sudoku = 
+    and [and [isNothing x | x <- row] | row <- rows sudoku]
+
+isFilled :: Sudoku -> Bool
+isFilled sudoku = 
+    and [and [isJust x | x <- row] | row <- rows sudoku]
