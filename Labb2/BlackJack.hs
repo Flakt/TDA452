@@ -57,15 +57,18 @@ countAces (Add card hand)
 -- A3
 -- | True iff the hand is bust (aces = 11 or 1  if needed)
 gameOver :: Hand -> Bool
-gameOver hand = valueHand hand > 21 &&
+gameOver hand = value hand > 21 &&
                 valueAceValue hand 1 > 21
 
 -- A4
 -- | Returns the winners (aces = 11 or 1 if needed)
+-- a player wins iff they have more than the bank  and if they are not bust or
+-- the player is not bust and the bank is
 winner :: Hand -> Hand -> Player
 winner guest bank
-    | not (gameOver guest) && 
-      valueHandBest guest > valueHandBest bank = Guest
+    | valueHandBest guest > valueHandBest bank &&
+      not (gameOver guest) = Guest
+    | not (gameOver guest) && gameOver bank = Guest
     | otherwise = Bank
 
 -- | Returns the best possible value of a hand (ace = 11 or 1  if needed)
@@ -163,8 +166,8 @@ drawNth (Add card deck) hand n
 ------------------------------Tests------------------------------------------
 
 -- | Tests that a hand of n aces counts n aces
-propCountAces :: Integer -> Bool
-propCountAces n =
+prop_countAces :: Integer -> Bool
+prop_countAces n =
     countAces(handAces (abs n)) == abs n
 
 -- | Helper function for generating a hand of size n of only ace of hearts
