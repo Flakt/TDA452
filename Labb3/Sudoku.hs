@@ -70,6 +70,6 @@ instance Arbitrary Sudoku where
 
 -- C3
 
--- | 
+-- | Tests the size constraints
 prop_Sudoku :: Sudoku -> Bool
 prop_Sudoku = isSudoku
