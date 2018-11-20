@@ -1,7 +1,6 @@
 module BlackJack where
 import Cards
 import RunGame
-import Test.QuickCheck hiding (shuffle)
 import System.Random
 
 {-
@@ -154,9 +153,10 @@ drawRandom gen deck hand =
         (newDeck, newHand) = drawNth deck hand randomInt
         (randomInt, gen2) = randomR (0, size deck + (-1)) gen
 
--- | Draws the nth card from a deck
+-- | Draws the nth card from a deck and return (newDeck, newHand)
 drawNth :: Hand -> Hand -> Integer -> (Hand, Hand)
-drawNth deck hand 0 = draw deck hand
+drawNth deck hand 0     = draw deck hand
+drawNth Empty hand n    = draw Empty hand
 drawNth (Add card deck) hand n 
     | n > 0     = (Add card newDeck, newCard)
     | otherwise = error "drawNth: drawing from a negative index" 
@@ -209,6 +209,7 @@ prop_fullSuit_value :: Bool
 prop_fullSuit_value = valueHand (fullSuit Hearts) ==
     suitTotalValue
 
+suitTotalValue :: Integer
 suitTotalValue = 11 + (10 * 4) + sum [9,8 .. 2]
 
 -- check <+ associativity
