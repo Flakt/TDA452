@@ -1,4 +1,6 @@
+module Sudoku where
 import Data.Maybe
+import Test.QuickCheck
 
 newtype Sudoku = Sudoku {rows :: [[Maybe Int]]}
     deriving (Show, Eq)
@@ -8,7 +10,11 @@ newtype Sudoku = Sudoku {rows :: [[Maybe Int]]}
 -- | Returns a blank 9x9 sudoku grid
 allBlankSudoku :: Sudoku
 allBlankSudoku = 
-    Sudoku replicate 9 (replicate 9 Nothing)
+    Sudoku (replicate 9 (replicate 9 Nothing))
+
+allFilledSudoku :: Sudoku
+allFilledSudoku = 
+    Sudoku (replicate 9 (replicate 9 (Just 1)))
 
 -- A2
 
@@ -16,20 +22,6 @@ allBlankSudoku =
 isSudoku :: Sudoku -> Bool
 isSudoku sudoku = 
     and [length x == 9 | x <- rows sudoku] && length (rows sudoku) == 9
-
-example :: Sudoku
-example =
-    Sudoku
-    [ [Just 3, Just 6, Nothing,Nothing,Just 7, Just 1, Just 2, Nothing,Nothing]
-    , [Nothing,Just 5, Nothing,Nothing,Nothing,Nothing,Just 1, Just 8, Nothing]
-    , [Nothing,Nothing,Just 9, Just 2, Nothing,Just 4, Just 7, Nothing,Nothing]
-    , [Nothing,Nothing,Nothing,Nothing,Just 1, Just 3, Nothing,Just 2, Just 8]
-    , [Just 4, Nothing,Nothing,Just 5, Nothing,Just 2, Nothing,Nothing,Just 9]
-    , [Just 2, Just 7, Nothing,Just 4, Just 6, Nothing,Nothing,Nothing,Nothing]
-    , [Nothing,Nothing,Just 5, Just 3, Nothing,Just 8, Just 9, Nothing,Nothing]
-    , [Nothing,Just 8, Just 3, Nothing,Nothing,Nothing,Nothing,Just 6, Nothing]
-    , [Nothing,Nothing,Just 7, Just 6, Just 9, Nothing,Nothing,Just 4, Just 3]
-    ]    
 
 -- A3
 isEmpty :: Sudoku -> Bool
@@ -39,3 +31,29 @@ isEmpty sudoku =
 isFilled :: Sudoku -> Bool
 isFilled sudoku = 
     and [and [isJust x | x <- row] | row <- rows sudoku]
+
+
+-- B1
+
+printSudoku :: Sudoku -> IO ()
+printSudoku s = print "todo" -- TODO
+
+-- B2
+
+readSudoku :: FilePath -> IO Sudoku
+readSudoku fp = return allBlankSudoku -- TODO
+
+--Here are some more functions that might come in handy:
+--
+--digitToInt :: Char -> Int
+--putStr     :: String -> IO ()
+--putStrLn   :: String -> IO ()
+--readFile   :: FilePath -> IO String
+--lines      :: String -> [String]
+--unlines    :: [String] -> String
+
+-- C1
+cell :: Gen (Maybe Int)
+cell = frequency [(1, return Nothing),
+                  (9, do n <- choose (1,9)
+                         return (Just n))]
