@@ -53,7 +53,23 @@ readSudoku fp = return allBlankSudoku -- TODO
 --unlines    :: [String] -> String
 
 -- C1
+
+-- | Generates a cell in (Just 1..9, Nothing)
 cell :: Gen (Maybe Int)
 cell = frequency [(1, return Nothing),
                   (9, do n <- choose (1,9)
                          return (Just n))]
+
+-- C2
+
+-- | Generates an arbitrary sudoku (with no strict checking)                        
+instance Arbitrary Sudoku where
+  arbitrary =
+    do rows <- vectorOf 9 (vectorOf 9 cell)
+       return (Sudoku rows)
+
+-- C3
+
+-- | 
+prop_Sudoku :: Sudoku -> Bool
+prop_Sudoku = isSudoku
