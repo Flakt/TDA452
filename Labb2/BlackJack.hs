@@ -21,10 +21,12 @@ empty :: Hand
 empty = Empty
 
 -- A2
--- | Returns the value of a hand (ace = 11)
+-- | Returns the value of a hand (ace = 11 or 1)
 
 value :: Hand -> Integer
-value = valueHand
+value hand
+    | valueHand hand > 21 = valueAceValue hand 1
+    | otherwise           = valueHand hand
 
 valueHand :: Hand -> Integer
 valueHand Empty = 0
@@ -65,16 +67,10 @@ gameOver hand = value hand > 21 &&
 -- the player is not bust and the bank is
 winner :: Hand -> Hand -> Player
 winner guest bank
-    | valueHandBest guest > valueHandBest bank &&
+    | valueHand guest > valueHand bank &&
       not (gameOver guest) = Guest
     | not (gameOver guest) && gameOver bank = Guest
     | otherwise = Bank
-
--- | Returns the best possible value of a hand (ace = 11 or 1  if needed)
-valueHandBest :: Hand -> Integer
-valueHandBest hand
-    | valueHand hand > 21 = valueAceValue hand 1
-    | otherwise           = valueHand hand
 
 -- B1
 
@@ -155,7 +151,7 @@ drawRandom gen deck hand =
 
 -- | Draws the nth card from a deck and return (newDeck, newHand)
 drawNth :: Hand -> Hand -> Integer -> (Hand, Hand)
-drawNth deck hand 0     = draw deck hand
+drawNth deck hand 0     = draw deck hand    
 drawNth Empty hand n    = draw Empty hand
 drawNth (Add card deck) hand n 
     | n > 0     = (Add card newDeck, newCard)
