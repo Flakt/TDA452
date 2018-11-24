@@ -20,7 +20,7 @@ allFilledSudoku =
 
 -- A2
 
--- | Tests if a sudoku confirms to the 9x9 dimensions
+-- | Tests if a sudoku conforms to the 9x9 dimensions
 isSudoku :: Sudoku -> Bool
 isSudoku sudoku =
     and [length x == 9 | x <- rows sudoku] && length (rows sudoku) == 9
@@ -37,11 +37,10 @@ isFilled sudoku =
 
 -- B1
 
+-- | Prints a given sudoku
 printSudoku :: Sudoku -> IO ()
 printSudoku s = putStr (foldr ((++) . rowToString) "" (rows s))
 
-
--- Print one given row of Sudoku
 rowToString :: [Maybe Int] -> String
 rowToString row = foldr ((++) . cellToString) "" row++ "\n"
 
@@ -51,11 +50,15 @@ cellToString Nothing  = "."
 
 -- B2
 
+-- | Given a filepath, returns a sudoku
 readSudoku :: FilePath -> IO Sudoku
 readSudoku fp = do 
     let input = readFile fp
     s <- input
-    return (sudokuFromString s)
+    let sud = sudokuFromString s
+    if isSudoku sud
+    then return sud
+    else error "readSudoku: bad file"
 
 -- | Returns a sudoku given a string ('\n' as line separator, '.' as empty)
 sudokuFromString :: String -> Sudoku
@@ -156,17 +159,32 @@ blanks s =
 -- E2
 
 (!!=) :: [a] -> (Int, a) -> [a]
+(!!=) [] (_, _) = error "!!= : applied to empty list"  
 (!!=) x (n, _) | n < 0 || n > length x 
     = error "!!= : index out of bounds" 
 (!!=) (x:xs) (0, nv) = nv:xs
 (!!=) (x:xs) (n, nv) = x:(xs !!= (n-1,nv))
 
-prop_bangBangEquals_correct :: Ord a => [a] -> (Int, a) -> Bool
-prop_bangBangEquals_correct x (i, a) =
-    (i < 0 || i > length x || null x) || -- pass values outside of definition
+prop_bangBangEquals_correct :: Eq a => [a] -> (Int, a) -> Bool
+prop_bangBangEquals_correct list (bi, a) =
+    null list || -- pass values that throws errors
     newList !! i == a
     where 
-        newList = x !!= (i, a) 
-        --newIndex = i `mod` length x
+        newList = list !!= (i, a) 
+        i = bi `mod` length list
 
-        
+-- E3
+
+update :: Sudoku -> Pos -> Maybe Int -> Sudoku
+update s (x,y) nv =
+    Sudoku [ if row == y then list !!= (x, nv) else list 
+             | (row, list) <- zip [0..8] (rows s)]
+
+prop_update_updated :: Sudoku -> Pos -> Maybe Int -> Bool
+prop_update_updated s (bx,by) nv =
+    (rows newSudoku !! y) !! x == nv
+    where 
+        newSudoku = update s (x,y) nv
+        x = bx `mod` 9
+        y = by `mod` 9
+
