@@ -5,7 +5,10 @@ import Data.List.Split
 import Test.QuickCheck
 
 newtype Sudoku = Sudoku {rows :: [[Maybe Int]]}
-    deriving (Show, Eq)
+    deriving (Eq)
+
+instance Show Sudoku where
+    show = sudokuToString
 
 -- A1
 
@@ -41,7 +44,10 @@ isFilled sudoku =
 
 -- | Prints a given sudoku
 printSudoku :: Sudoku -> IO ()
-printSudoku s = putStr (foldr ((++) . rowToString) "" (rows s))
+printSudoku s = putStr (sudokuToString s)
+
+sudokuToString :: Sudoku -> String
+sudokuToString s = foldr ((++) . rowToString) "" (rows s)
 
 rowToString :: [Maybe Int] -> String
 rowToString row = foldr ((++) . cellToString) "" row++ "\n"
@@ -162,6 +168,7 @@ blanks s =
 (!!=) (x:xs) (0, nv) = nv:xs
 (!!=) (x:xs) (n, nv) = x:(xs !!= (n-1,nv))
 
+-- | Tests that the expected value can be found at the updated position
 prop_bangBangEquals_correct :: Eq a => [a] -> (Int, a) -> Bool
 prop_bangBangEquals_correct list (bi, a) =
     null list || -- ok illegal argument
@@ -178,6 +185,7 @@ update s (x,y) nv =
     Sudoku [ if row == y then list !!= (x, nv) else list 
              | (row, list) <- zip [0..8] (rows s)]
 
+-- | Tests that the expected value can be found at the updated cell
 prop_update_updated :: Sudoku -> Pos -> Maybe Int -> Bool
 prop_update_updated s (bx,by) nv =
     (rows newSudoku !! y) !! x == nv
@@ -191,16 +199,28 @@ prop_update_updated s (bx,by) nv =
 -- | Given a sudoku and a position, returns a list of candiadates
 -- (i.e. legal numbers) that could be placed at the position
 candidates :: Sudoku -> Pos -> [Int]
-candidates s (x,y) = undefined
--- get all relevant blocks
--- get all the numbers in those blocks
--- remove numbers from [1..9] based on those numbers
+candidates s (x,y) =
+    [fromJust c | c <- [Just n | n <- [1..9]], c `notElem` relevantCells] 
+    where 
+        relevantCells = rows !! y ++ 
+                        cols !! x ++ 
+                        squares !! (x `div` 3 + (y `div` 3) * 3)
+        [rows, cols, squares] = chunksOf 9 (blocks s)
 
-prop_candidates_correct :: Sudoku -> Pos -> Bool
-prop_candidates_correct s (bx,by) =
-    (bx,by) `elem` blanks s || -- ok illegal arguments
-    (all isSudoku possibleSudokus &&
-    all isOkay possibleSudokus)
+-- | Given a sudoku, tests if prop_candidates_correct_cell holds for all cells
+prop_candidates_correct :: Sudoku -> Bool
+prop_candidates_correct s =
+    all (prop_candidates_correct_cell s) coords
+    where coords = [(x,y) | x <- [0..8], y <- [0..8]]
+     
+-- | Given and a sudoku, tests if placing all candidates at that cell results
+-- in a legal sudoku (i.e. isSudoku && isOkay)
+prop_candidates_correct_cell :: Sudoku -> Pos -> Bool
+prop_candidates_correct_cell s (bx,by) =
+    (bx,by) `elem` blanks s ||          -- ok illegal arguments
+    not (isOkay s)          ||
+    (all isSudoku possibleSudokus &&    
+    all isOkay possibleSudokus)         
     where
         x = bx `mod` 9
         y = by `mod` 9
