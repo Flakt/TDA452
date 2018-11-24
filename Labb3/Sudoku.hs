@@ -1,5 +1,6 @@
 module Sudoku where
 import Data.Maybe
+import Data.List
 import Data.List.Split
 import Test.QuickCheck
 
@@ -59,7 +60,7 @@ readSudoku fp = do
 -- | Returns a sudoku given a string ('\n' as line separator, '.' as empty)
 sudokuFromString :: String -> Sudoku
 sudokuFromString string = 
-    Sudoku (map stringToRow (splitOn "\n" string))
+    Sudoku (map stringToRow (lines string))
     where 
         stringToRow = map toMaybe
 
@@ -67,14 +68,6 @@ toMaybe :: Char -> Maybe Int
 toMaybe '.' = Nothing
 toMaybe c   = Just ((fromEnum c :: Int) + (-48))
 
---Here are some more functions that might come in handy:
---
---digitToInt :: Char -> Int
---putStr     :: String -> IO ()
---putStrLn   :: String -> IO ()
---readFile   :: FilePath -> IO String
---lines      :: String -> [String]
---unlines    :: [String] -> String
 
 -- C1
 
@@ -97,3 +90,49 @@ instance Arbitrary Sudoku where
 -- | Tests the size constraints
 prop_Sudoku :: Sudoku -> Bool
 prop_Sudoku = isSudoku
+
+-- D1
+
+
+type Block = [Maybe Int]
+
+-- | tests a block (3x3 square) such that there are no duplicate numbers
+-- the algorithm for example input: [1,3,4,2,4]
+--  sort the list                   [1,2,3,4,4]
+--  group by elements in the list   [[1],[2],[3],[44]]
+--  map to length                   [1,1,1,2]
+--  test that all lengths are == 1  false
+isOkayBlock :: Block -> Bool
+isOkayBlock block = 
+    nub numbers == numbers
+    where
+        numbers = [fromMaybe 0 x | x<- block, isJust x ] :: [Int]
+
+-- D2
+-- | Given a sudoku, converts it into all different blocks, 
+-- i.e. rows, columns and squares
+blocks :: Sudoku -> [Block]
+blocks s = rows s ++ transpose (rows s) ++ allSquares s
+    where
+        allSquares s = concatMap appendRows (chunksOf 3 (rows s)) 
+
+-- | Given 3 rows, concatenates them into 3 blocks
+appendRows :: [[Maybe Int]] -> [[Maybe Int]]
+appendRows r 
+    | length r == 3 = [b1, b2, b3]
+        where
+        b1 = concatMap (take 3) r
+        b2 = concatMap (take 3 . drop 3) r
+        b3 = concatMap (drop 6) r
+appendRows _ = error "appendRows: bad input"
+
+prop_blocks_length :: Sudoku -> Bool
+prop_blocks_length s = 
+    all (==9) (map length (blocks s))
+
+-- D3
+
+-- | tests a sudoku such that a number does not occurr twice in a block
+-- (i.e. rows, columns and 3x3 subsquares)
+isOkay :: Sudoku -> Bool
+isOkay s = all isOkayBlock (blocks s)
