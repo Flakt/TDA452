@@ -1,5 +1,6 @@
 module Sudoku where
 import Data.Maybe
+import Data.List.Split
 import Test.QuickCheck
 
 newtype Sudoku = Sudoku {rows :: [[Maybe Int]]}
@@ -36,11 +37,12 @@ isFilled sudoku =
 -- B1
 
 printSudoku :: Sudoku -> IO ()
-printSudoku s = putStr (foldr (++) ("") (map rowToString (rows s)))
+printSudoku s = putStr (foldr ((++) . rowToString) "" (rows s))
+
 
 -- Print one given row of Sudoku
 rowToString :: [Maybe Int] -> String
-rowToString row = foldr (++) ("") (map cellToString row) ++ "\n"
+rowToString row = foldr ((++) . cellToString) "" row++ "\n"
 
 cellToString :: Maybe Int -> String
 cellToString (Just n) = show n
@@ -49,7 +51,21 @@ cellToString Nothing  = "."
 -- B2
 
 readSudoku :: FilePath -> IO Sudoku
-readSudoku fp = return allBlankSudoku -- TODO
+readSudoku fp = do 
+    let input = readFile fp
+    s <- input
+    return (sudokuFromString s)
+
+-- | Returns a sudoku given a string ('\n' as line separator, '.' as empty)
+sudokuFromString :: String -> Sudoku
+sudokuFromString string = 
+    Sudoku (map stringToRow (splitOn "\n" string))
+    where 
+        stringToRow = map toMaybe
+
+toMaybe :: Char -> Maybe Int
+toMaybe '.' = Nothing
+toMaybe c   = Just ((fromEnum c :: Int) + (-48))
 
 --Here are some more functions that might come in handy:
 --
