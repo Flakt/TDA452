@@ -25,12 +25,12 @@ empty = Empty
 
 value :: Hand -> Integer
 value hand
-    | valueHand hand > 21 = valueAceValue hand 1
-    | otherwise           = valueHand hand
+    | valueInitial hand > 21 = valueWithValueOfAce hand
+    | otherwise           = valueInitial hand
 
-valueHand :: Hand -> Integer
-valueHand Empty = 0
-valueHand (Add card hand) = valueCard card + valueHand hand
+valueInitial :: Hand -> Integer
+valueInitial Empty = 0
+valueInitial (Add card hand) = valueCard card + valueInitial hand
 
 -- | Returns the value of a card (ace = 11)
 valueCard :: Card -> Integer
@@ -42,9 +42,10 @@ valueRank Ace           = 11
 valueRank (Numeric n)   = n
 valueRank _             = 10 -- Not a number or ace => jack, queen or king
 
--- | Returns the value of a hand, replacing the value of aces (ace = n)
-valueAceValue :: Hand -> Integer -> Integer
-valueAceValue hand value = valueHand hand -(aces * 11) + aces * value
+-- | Returns the value of a hand, replacing the value of aces (ace = 1)
+-- each ace is worth 10 less
+valueWithValueOfAce :: Hand -> Integer
+valueWithValueOfAce hand = valueInitial hand -(aces * 10)
     where
         aces = countAces hand
 
@@ -59,7 +60,7 @@ countAces (Add card hand)
 -- | True iff the hand is bust (aces = 11 or 1  if needed)
 gameOver :: Hand -> Bool
 gameOver hand = value hand > 21 &&
-                valueAceValue hand 1 > 21
+                valueWithValueOfAce hand > 21
 
 -- A4
 -- | Returns the winners (aces = 11 or 1 if needed)
@@ -67,7 +68,7 @@ gameOver hand = value hand > 21 &&
 -- the player is not bust and the bank is
 winner :: Hand -> Hand -> Player
 winner guest bank
-    | valueHand guest > valueHand bank &&
+    | value guest > value bank &&
       not (gameOver guest) = Guest
     | not (gameOver guest) && gameOver bank = Guest
     | otherwise = Bank
@@ -184,7 +185,7 @@ prop_playBank deck =
 prop_draw_valueDiff :: Hand -> Hand -> Bool
 prop_draw_valueDiff deck hand =
     size deck == 0 || -- guard against errors when using QuickCheck
-    valueHand deck + valueHand hand == valueHand newDeck + valueHand hand
+    valueInitial deck + valueInitial hand == valueInitial newDeck + valueInitial hand
     where
         (newDeck, hand) = draw deck hand
 
@@ -202,7 +203,7 @@ prop_fullSuit_size = size (fullSuit Spades) == 13
 
 -- check that the total value of a suit is some constant
 prop_fullSuit_value :: Bool
-prop_fullSuit_value = valueHand (fullSuit Hearts) ==
+prop_fullSuit_value = valueInitial (fullSuit Hearts) ==
     suitTotalValue
 
 suitTotalValue :: Integer
@@ -229,6 +230,7 @@ card `belongsTo` (Add card' hand) = card == card' || card `belongsTo` hand
 prop_size_shuffle :: StdGen -> Hand -> Bool
 prop_size_shuffle gen deck = size deck == size (shuffle gen deck)
 
+implementation :: Interface
 implementation = Interface
   { iEmpty    = empty
   , iFullDeck = fullDeck
