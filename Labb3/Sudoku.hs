@@ -9,34 +9,42 @@ newtype Sudoku = Sudoku {rows :: [[Maybe Int]]}
 
 -- | Returns a blank 9x9 sudoku grid
 allBlankSudoku :: Sudoku
-allBlankSudoku = 
+allBlankSudoku =
     Sudoku (replicate 9 (replicate 9 Nothing))
 
 allFilledSudoku :: Sudoku
-allFilledSudoku = 
+allFilledSudoku =
     Sudoku (replicate 9 (replicate 9 (Just 1)))
 
 -- A2
 
 -- | Tests if a sudoku confirms to the 9x9 dimensions
 isSudoku :: Sudoku -> Bool
-isSudoku sudoku = 
+isSudoku sudoku =
     and [length x == 9 | x <- rows sudoku] && length (rows sudoku) == 9
 
 -- A3
 isEmpty :: Sudoku -> Bool
-isEmpty sudoku = 
+isEmpty sudoku =
     and [and [isNothing x | x <- row] | row <- rows sudoku]
 
 isFilled :: Sudoku -> Bool
-isFilled sudoku = 
+isFilled sudoku =
     and [and [isJust x | x <- row] | row <- rows sudoku]
 
 
 -- B1
 
 printSudoku :: Sudoku -> IO ()
-printSudoku s = print "todo" -- TODO
+printSudoku s = putStr (foldr (++) ("") (map rowToString (rows s)))
+
+-- Print one given row of Sudoku
+rowToString :: [Maybe Int] -> String
+rowToString row = foldr (++) ("") (map cellToString row) ++ "\n"
+
+cellToString :: Maybe Int -> String
+cellToString (Just n) = show n
+cellToString Nothing  = "."
 
 -- B2
 
@@ -62,7 +70,7 @@ cell = frequency [(1, return Nothing),
 
 -- C2
 
--- | Generates an arbitrary sudoku (with no strict checking)                        
+-- | Generates an arbitrary sudoku (with no strict checking)
 instance Arbitrary Sudoku where
   arbitrary =
     do rows <- vectorOf 9 (vectorOf 9 cell)
