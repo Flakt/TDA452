@@ -136,3 +136,17 @@ prop_blocks_length s =
 -- (i.e. rows, columns and 3x3 subsquares)
 isOkay :: Sudoku -> Bool
 isOkay s = all isOkayBlock (blocks s)
+
+-- E1
+
+type Pos = (Int, Int)
+
+blanks :: Sudoku -> [Pos]
+blanks s = 
+        map fst         -- only return the point
+        (filter snd     -- remove non-Nothing
+        (zip coords (   -- combine with a point
+            concatMap (map isNothing) (rows s)))
+        )
+        where
+            coords = [(x,y) | x<-[0..8], y <- [0..8]]
