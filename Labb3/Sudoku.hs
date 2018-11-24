@@ -20,11 +20,13 @@ allFilledSudoku =
 
 -- A2
 
--- | Tests if a sudoku conforms to the 9x9 dimensions
+-- | Tests if a sudoku conforms to the 9x9 dimensions and that all values are in [1..9]
 isSudoku :: Sudoku -> Bool
 isSudoku sudoku =
-    and [length x == 9 | x <- rows sudoku] && length (rows sudoku) == 9
-
+    all ((==9) . length) (rows sudoku) &&
+    all (`elem` legal) (concat (rows sudoku))
+    where
+        legal = Nothing:[Just n | n <- [1..9]]
 -- A3
 isEmpty :: Sudoku -> Bool
 isEmpty sudoku =
@@ -100,11 +102,6 @@ prop_Sudoku = isSudoku
 type Block = [Maybe Int]
 
 -- | tests a block (3x3 square) such that there are no duplicate numbers
--- the algorithm for example input: [1,3,4,2,4]
---  sort the list                   [1,2,3,4,4]
---  group by elements in the list   [[1],[2],[3],[44]]
---  map to length                   [1,1,1,2]
---  test that all lengths are == 1  false
 isOkayBlock :: Block -> Bool
 isOkayBlock block = 
     nub numbers == numbers
@@ -167,7 +164,7 @@ blanks s =
 
 prop_bangBangEquals_correct :: Eq a => [a] -> (Int, a) -> Bool
 prop_bangBangEquals_correct list (bi, a) =
-    null list || -- pass values that throws errors
+    null list || -- ok illegal argument
     newList !! i == a
     where 
         newList = list !!= (i, a) 
@@ -175,6 +172,7 @@ prop_bangBangEquals_correct list (bi, a) =
 
 -- E3
 
+-- | Updates a given sudoku given a position and a new value
 update :: Sudoku -> Pos -> Maybe Int -> Sudoku
 update s (x,y) nv =
     Sudoku [ if row == y then list !!= (x, nv) else list 
@@ -188,3 +186,22 @@ prop_update_updated s (bx,by) nv =
         x = bx `mod` 9
         y = by `mod` 9
 
+-- E4
+
+-- | Given a sudoku and a position, returns a list of candiadates
+-- (i.e. legal numbers) that could be placed at the position
+candidates :: Sudoku -> Pos -> [Int]
+candidates s (x,y) = undefined
+-- get all relevant blocks
+-- get all the numbers in those blocks
+-- remove numbers from [1..9] based on those numbers
+
+prop_candidates_correct :: Sudoku -> Pos -> Bool
+prop_candidates_correct s (bx,by) =
+    (bx,by) `elem` blanks s || -- ok illegal arguments
+    (all isSudoku possibleSudokus &&
+    all isOkay possibleSudokus)
+    where
+        x = bx `mod` 9
+        y = by `mod` 9
+        possibleSudokus = map (update s (x,y) . Just) (candidates s (x,y)) 
