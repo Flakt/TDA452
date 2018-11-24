@@ -141,6 +141,8 @@ isOkay s = all isOkayBlock (blocks s)
 
 type Pos = (Int, Int)
 
+-- | Given a sudoku, returns a list of coordinates
+-- corresponding to empty spaces
 blanks :: Sudoku -> [Pos]
 blanks s = 
         map fst         -- only return the point
@@ -150,3 +152,21 @@ blanks s =
         )
         where
             coords = [(x,y) | x<-[0..8], y <- [0..8]]
+
+-- E2
+
+(!!=) :: [a] -> (Int, a) -> [a]
+(!!=) x (n, _) | n < 0 || n > length x 
+    = error "!!= : index out of bounds" 
+(!!=) (x:xs) (0, nv) = nv:xs
+(!!=) (x:xs) (n, nv) = x:(xs !!= (n-1,nv))
+
+prop_bangBangEquals_correct :: Ord a => [a] -> (Int, a) -> Bool
+prop_bangBangEquals_correct x (i, a) =
+    (i < 0 || i > length x || null x) || -- pass values outside of definition
+    newList !! i == a
+    where 
+        newList = x !!= (i, a) 
+        --newIndex = i `mod` length x
+
+        
