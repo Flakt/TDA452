@@ -80,8 +80,8 @@ toMaybe c   = Just ((fromEnum c :: Int) + (-48))
 
 -- | Generates a cell in (Just 1..9, Nothing)
 cell :: Gen (Maybe Int)
-cell = frequency [(1, return Nothing),
-                  (9, do n <- choose (1,9)
+cell = frequency [(9, return Nothing),
+                  (1, do n <- choose (1,9)
                          return (Just n))]
 
 -- C2
