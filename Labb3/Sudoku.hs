@@ -10,9 +10,28 @@ newtype Sudoku = Sudoku {rows :: [[Maybe Int]]}
 instance Show Sudoku where
     show = sudokuToString
 
+-- | A sample sudoku puzzle
+example :: Sudoku
+example =
+    Sudoku
+      [ [j 3,j 6,n  ,n  ,j 7,j 1,j 2,n  ,n  ]
+      , [n  ,j 5,n  ,n  ,n  ,n  ,j 1,j 8,n  ]
+      , [n  ,n  ,j 9,j 2,n  ,j 4,j 7,n  ,n  ]
+      , [n  ,n  ,n  ,n  ,j 1,j 3,n  ,j 2,j 8]
+      , [j 4,n  ,n  ,j 5,n  ,j 2,n  ,n  ,j 9]
+      , [j 2,j 7,n  ,j 4,j 6,n  ,n  ,n  ,n  ]
+      , [n  ,n  ,j 5,j 3,n  ,j 8,j 9,n  ,n  ]
+      , [n  ,j 8,j 3,n  ,n  ,n  ,n  ,j 6,n  ]
+      , [n  ,n  ,j 7,j 6,j 9,n  ,n  ,j 4,j 3]
+      ]
+  where
+    n = Nothing
+    j = Just
+
 -- A1
 
 -- | Returns a blank 9x9 sudoku grid
+
 allBlankSudoku :: Sudoku
 allBlankSudoku =
     Sudoku (replicate 9 (replicate 9 Nothing))
@@ -30,7 +49,9 @@ isSudoku sudoku =
     all (`elem` legal) (concat (rows sudoku))
     where
         legal = Nothing:[Just n | n <- [1..9]]
+
 -- A3
+
 isEmpty :: Sudoku -> Bool
 isEmpty sudoku =
     and [and [isNothing x | x <- row] | row <- rows sudoku]
@@ -47,10 +68,10 @@ printSudoku :: Sudoku -> IO ()
 printSudoku s = putStr (sudokuToString s)
 
 sudokuToString :: Sudoku -> String
-sudokuToString s = foldr ((++) . rowToString) "" (rows s)
+sudokuToString s = concatMap rowToString (rows s)
 
 rowToString :: [Maybe Int] -> String
-rowToString row = foldr ((++) . cellToString) "" row++ "\n"
+rowToString row = concatMap cellToString row ++ "\n"
 
 cellToString :: Maybe Int -> String
 cellToString (Just n) = show n
@@ -60,9 +81,8 @@ cellToString Nothing  = "."
 
 -- | Given a filepath, returns a sudoku
 readSudoku :: FilePath -> IO Sudoku
-readSudoku fp = do 
-    let input = readFile fp
-    s <- input
+readSudoku fp = do  
+    s <- readFile fp
     let sud = sudokuFromString s
     if isSudoku sud
     then return sud
@@ -132,8 +152,8 @@ appendRows r
         b3 = concatMap (drop 6) r
 appendRows _ = error "appendRows: bad input"
 
-prop_blocks_length :: Sudoku -> Bool
-prop_blocks_length s = 
+prop_blocks_lengths :: Sudoku -> Bool
+prop_blocks_lengths s = 
     all (==9) (map length (blocks s))
 
 -- D3
@@ -161,6 +181,8 @@ blanks s =
 
 -- E2
 
+-- | Given a list, and a tuple (index, new_value), updates the element in
+-- the list at the given index to the given new_value
 (!!=) :: [a] -> (Int, a) -> [a]
 (!!=) [] (_, _) = error "!!= : applied to empty list"  
 (!!=) x (n, _) | n < 0 || n > length x 
