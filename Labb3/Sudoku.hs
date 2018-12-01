@@ -28,6 +28,9 @@ example =
     n = Nothing
     j = Just
 
+nearlySolved = readSudoku "/home/schan/Documents/TDA452/Labb3/nearsolved.sud"
+solvalbe = readSudoku "/home/schan/Documents/TDA452/Labb3/solvable.sud"
+
 -- A1
 
 -- | Returns a blank 9x9 sudoku grid
@@ -81,7 +84,7 @@ cellToString Nothing  = "."
 
 -- | Given a filepath, returns a sudoku
 readSudoku :: FilePath -> IO Sudoku
-readSudoku fp = do  
+readSudoku fp = do
     s <- readFile fp
     let sud = sudokuFromString s
     if isSudoku sud
@@ -90,9 +93,9 @@ readSudoku fp = do
 
 -- | Returns a sudoku given a string ('\n' as line separator, '.' as empty)
 sudokuFromString :: String -> Sudoku
-sudokuFromString string = 
+sudokuFromString string =
     Sudoku (map stringToRow (lines string))
-    where 
+    where
         stringToRow = map toMaybe
 
 toMaybe :: Char -> Maybe Int
@@ -129,22 +132,22 @@ type Block = [Maybe Int]
 
 -- | tests a block (3x3 square) such that there are no duplicate numbers
 isOkayBlock :: Block -> Bool
-isOkayBlock block = 
+isOkayBlock block =
     nub numbers == numbers
     where
         numbers = [fromMaybe 0 x | x<- block, isJust x ] :: [Int]
 
 -- D2
--- | Given a sudoku, converts it into all different blocks, 
+-- | Given a sudoku, converts it into all different blocks,
 -- i.e. rows, columns and squares
 blocks :: Sudoku -> [Block]
 blocks s = rows s ++ transpose (rows s) ++ allSquares s
     where
-        allSquares s = concatMap appendRows (chunksOf 3 (rows s)) 
+        allSquares s = concatMap appendRows (chunksOf 3 (rows s))
 
 -- | Given 3 rows, concatenates them into 3 blocks
 appendRows :: [[Maybe Int]] -> [[Maybe Int]]
-appendRows r 
+appendRows r
     | length r == 3 = [b1, b2, b3]
         where
         b1 = concatMap (take 3) r
@@ -153,7 +156,7 @@ appendRows r
 appendRows _ = error "appendRows: bad input"
 
 prop_blocks_lengths :: Sudoku -> Bool
-prop_blocks_lengths s = 
+prop_blocks_lengths s =
     all (==9) (map length (blocks s))
 
 -- D3
@@ -170,23 +173,23 @@ type Pos = (Int, Int)
 -- | Given a sudoku, returns a list of coordinates
 -- corresponding to empty spaces
 blanks :: Sudoku -> [Pos]
-blanks s = 
+blanks s =
         map fst         -- only return the point
         (filter snd     -- remove non-Nothing
         (zip coords (   -- combine with a point
             concatMap (map isNothing) (rows s)))
         )
         where
-            coords = [(x,y) | x<-[0..8], y <- [0..8]]
+            coords = [(x,y) | y <- [0..8], x<-[0..8]]
 
 -- E2
 
 -- | Given a list, and a tuple (index, new_value), updates the element in
 -- the list at the given index to the given new_value
 (!!=) :: [a] -> (Int, a) -> [a]
-(!!=) [] (_, _) = error "!!= : applied to empty list"  
-(!!=) x (n, _) | n < 0 || n > length x 
-    = error "!!= : index out of bounds" 
+(!!=) [] (_, _) = error "!!= : applied to empty list"
+(!!=) x (n, _) | n < 0 || n > length x
+    = error "!!= : index out of bounds"
 (!!=) (x:xs) (0, nv) = nv:xs
 (!!=) (x:xs) (n, nv) = x:(xs !!= (n-1,nv))
 
@@ -195,8 +198,8 @@ prop_bangBangEquals_correct :: Eq a => [a] -> (Int, a) -> Bool
 prop_bangBangEquals_correct list (bi, a) =
     null list || -- ok illegal argument
     newList !! i == a
-    where 
-        newList = list !!= (i, a) 
+    where
+        newList = list !!= (i, a)
         i = bi `mod` length list
 
 -- E3
@@ -204,14 +207,14 @@ prop_bangBangEquals_correct list (bi, a) =
 -- | Updates a given sudoku given a position and a new value
 update :: Sudoku -> Pos -> Maybe Int -> Sudoku
 update s (x,y) nv =
-    Sudoku [ if row == y then list !!= (x, nv) else list 
+    Sudoku [ if row == y then list !!= (x, nv) else list
              | (row, list) <- zip [0..8] (rows s)]
 
 -- | Tests that the expected value can be found at the updated cell
 prop_update_updated :: Sudoku -> Pos -> Maybe Int -> Bool
 prop_update_updated s (bx,by) nv =
     (rows newSudoku !! y) !! x == nv
-    where 
+    where
         newSudoku = update s (x,y) nv
         x = bx `mod` 9
         y = by `mod` 9
@@ -222,10 +225,10 @@ prop_update_updated s (bx,by) nv =
 -- (i.e. legal numbers) that could be placed at the position
 candidates :: Sudoku -> Pos -> [Int]
 candidates s (x,y) =
-    [fromJust c | c <- [Just n | n <- [1..9]], c `notElem` relevantCells] 
-    where 
-        relevantCells = rows !! y ++ 
-                        cols !! x ++ 
+    [fromJust c | c <- [Just n | n <- [1..9]], c `notElem` relevantCells]
+    where
+        relevantCells = rows !! y ++
+                        cols !! x ++
                         squares !! (x `div` 3 + (y `div` 3) * 3)
         [rows, cols, squares] = chunksOf 9 (blocks s)
 
@@ -234,16 +237,35 @@ prop_candidates_correct :: Sudoku -> Bool
 prop_candidates_correct s =
     all (prop_candidates_correct_cell s) coords
     where coords = [(x,y) | x <- [0..8], y <- [0..8]]
-     
+
 -- | Given and a sudoku, tests if placing all candidates at that cell results
 -- in a legal sudoku (i.e. isSudoku && isOkay)
 prop_candidates_correct_cell :: Sudoku -> Pos -> Bool
 prop_candidates_correct_cell s (bx,by) =
     (bx,by) `elem` blanks s ||          -- ok illegal arguments
     not (isOkay s)          ||
-    (all isSudoku possibleSudokus &&    
-    all isOkay possibleSudokus)         
+    (all isSudoku possibleSudokus &&
+    all isOkay possibleSudokus)
     where
         x = bx `mod` 9
         y = by `mod` 9
-        possibleSudokus = map (update s (x,y) . Just) (candidates s (x,y)) 
+        possibleSudokus = map (update s (x,y) . Just) (candidates s (x,y))
+
+
+solve :: Sudoku -> Maybe Sudoku
+solve sud | isOkay sud && isSudoku sud = solve' sud
+          | otherwise                  = Nothing
+
+solve' :: Sudoku -> Maybe Sudoku
+solve' sud | null (blanks sud) = Just sud
+solve' sud = fromMaybe Nothing maybeResult
+  where
+    maybeResult = find isJust listOfMaybes
+    listOfMaybes = map solve' toEvalSudokus
+    toEvalSudokus = concatMap (candsToSud sud) pointCandidates
+    pointCandidates = -- list of tuples: (Pos, list_of_possible_candidates)
+      map (\(x,y) -> ((x,y), candidates sud (x,y))) (blanks sud)
+
+candsToSud :: Sudoku -> (Pos, [Int]) -> [Sudoku]
+candsToSud sud ((x,y), cands) =
+    map ((update sud (x,y)) . \x -> Just x) cands
