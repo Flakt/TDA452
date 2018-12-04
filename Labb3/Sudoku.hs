@@ -251,11 +251,37 @@ prop_candidates_correct_cell s (bx,by) =
         y = by `mod` 9
         possibleSudokus = map (update s (x,y) . Just) (candidates s (x,y))
 
+-- F1
 
 solve :: Sudoku -> Maybe Sudoku
 solve sud | isOkay sud && isSudoku sud = solve' sud
           | otherwise                  = Nothing
 
+solve' :: Sudoku -> Maybe Sudoku
+solve' sud
+  | null (blanks sud) = Just sud
+  | otherwise = if isJust res
+                then res
+                else Nothing
+                  where res = evalBlanks sud (blanks sud)
+
+evalBlanks :: Sudoku -> [Pos] -> Maybe Sudoku
+evalBlanks sud []     = Nothing
+evalBlanks sud (x:xs) =
+  if isJust result
+  then result
+  else evalBlanks sud xs
+    where result = checkCands sud x (candidates sud x)
+
+checkCands :: Sudoku -> Pos -> [Int] -> Maybe Sudoku
+checkCands _ _ []         = Nothing
+checkCands sud pos (x:xs) =
+  if isJust result
+  then result
+  else checkCands sud pos xs
+    where result = solve' (update sud pos (Just x))
+
+{-
 solve' :: Sudoku -> Maybe Sudoku
 solve' sud | null (blanks sud) = Just sud
 solve' sud = fromMaybe Nothing maybeResult
@@ -266,6 +292,8 @@ solve' sud = fromMaybe Nothing maybeResult
     pointCandidates = -- list of tuples: (Pos, list_of_possible_candidates)
       map (\(x,y) -> ((x,y), candidates sud (x,y))) (blanks sud)
 
+
 candsToSud :: Sudoku -> (Pos, [Int]) -> [Sudoku]
 candsToSud sud ((x,y), cands) =
     map ((update sud (x,y)) . \x -> Just x) cands
+-}
