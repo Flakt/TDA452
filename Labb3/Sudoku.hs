@@ -289,3 +289,22 @@ readAndSolve fp = do
     sud <- readSudoku fp
     let solution = solve' sud
     maybe (print "(no solution)") print solution
+
+-- F3
+
+-- | Tests if the first sudoku is a solution of the second sudoku
+isSolutionOf :: Sudoku -> Sudoku -> Bool
+isSolutionOf sol sud =
+    isOkay sol &&           -- all blocks are legal
+    isSudoku sol &&         -- the dimensions are correct
+    null (blanks sol) &&    -- there are no blanks
+    isSubsetOf sol sud      -- 
+
+-- | Tests that for all pairs of corresponding values in sol and sud
+-- that sol.v == sud.v OR that sud.v == Nothing
+isSubsetOf :: Sudoku -> Sudoku -> Bool
+isSubsetOf sol sud =
+    all (\(a,b) -> a == b || isNothing b) zipped
+    where
+        zipped = zip (toList sol) (toList sud)
+        toList = concat . rows
