@@ -280,3 +280,12 @@ solve' :: Sudoku -> Maybe Sudoku
 solve' sud  | null blanks'  = Just sud
             | otherwise     = solve sud (head blanks')
                 where blanks' = blanks sud
+
+-- F2
+
+-- | Convenience function
+readAndSolve :: FilePath -> IO ()
+readAndSolve fp = do
+    sud <- readSudoku fp
+    let solution = solve' sud
+    maybe (print "(no solution)") print solution
