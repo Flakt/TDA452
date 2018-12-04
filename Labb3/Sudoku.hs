@@ -266,8 +266,8 @@ prop_candidates_correct_cell s (bx,by) =
           
 -- | Attempts to solve a given sudoku by trying all the candidates of a 
 -- given position.
-solve :: Sudoku -> Pos -> Maybe Sudoku  
-solve sud pos 
+solve' :: Sudoku -> Pos -> Maybe Sudoku  
+solve' sud pos 
     | null cands = Nothing
     | otherwise = listToMaybe (catMaybes solutions)
     where
@@ -276,8 +276,8 @@ solve sud pos
         cands       = candidates sud pos
 
 -- | Solves a sudoku
-solve' :: Sudoku -> Maybe Sudoku
-solve' sud  | null blanks'  = Just sud
+solve :: Sudoku -> Maybe Sudoku
+solve sud  | null blanks'  = Just sud
             | otherwise     = solve sud (head blanks')
                 where blanks' = blanks sud
 
