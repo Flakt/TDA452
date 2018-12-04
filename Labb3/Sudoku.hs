@@ -271,14 +271,14 @@ solve' sud pos
     | null cands = Nothing
     | otherwise = listToMaybe (catMaybes solutions)
     where
-        solutions   = map solve' children
+        solutions   = map solve children
         children    = map (update sud pos . Just) cands -- list of all possible children 
         cands       = candidates sud pos
 
 -- | Solves a sudoku
 solve :: Sudoku -> Maybe Sudoku
-solve sud  | null blanks'  = Just sud
-            | otherwise     = solve sud (head blanks')
+solve sud   | null blanks' = Just sud
+            | otherwise    = solve' sud (head blanks')
                 where blanks' = blanks sud
 
 -- F2
@@ -287,7 +287,7 @@ solve sud  | null blanks'  = Just sud
 readAndSolve :: FilePath -> IO ()
 readAndSolve fp = do
     sud <- readSudoku fp
-    let solution = solve' sud
+    let solution = solve sud
     maybe (print "(no solution)") print solution
 
 -- F3
