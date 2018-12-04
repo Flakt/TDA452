@@ -1,4 +1,8 @@
--- | Data types for card games
+-- | Data typesvalEntries' es empty firstGuard Awake
+    where
+        (_,_,Just firstGuard) = head es
+
+ for card games
 module Cards where
 
   import Test.QuickCheck

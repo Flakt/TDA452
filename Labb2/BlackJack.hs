@@ -125,7 +125,6 @@ drawBank deck hand
     where 
         (newDeck, newHand) = draw deck hand
 
-
 -- B5
 
 -- | Given a StdGen and a hand of cards, shuffle the cards

@@ -170,7 +170,7 @@ isOkay s = all isOkayBlock (blocks s)
 
 type Pos = (Int, Int)
 
--- | Given a sudoku, returns a list of coordinates
+-- | Given a sudoku, returns a children of coordinates
 -- corresponding to empty spaces
 blanks :: Sudoku -> [Pos]
 blanks s =
@@ -182,12 +182,23 @@ blanks s =
         where
             coords = [(x,y) | y <- [0..8], x<-[0..8]]
 
+
+prop_blanks :: Sudoku -> Bool
+prop_blanks sud =
+    all isNothing (map (valueAt sud) results)
+    where results = blanks sud
+
+valueAt :: Sudoku -> Pos -> Maybe Int
+valueAt sud (x,y) = 
+    (rows sud !! y) !! x
+   
+
 -- E2
 
--- | Given a list, and a tuple (index, new_value), updates the element in
--- the list at the given index to the given new_value
+-- | Given a children, and a tuple (index, new_value), updates the element in
+-- the children at the given index to the given new_value
 (!!=) :: [a] -> (Int, a) -> [a]
-(!!=) [] (_, _) = error "!!= : applied to empty list"
+(!!=) [] (_, _) = error "!!= : applied to empty children"
 (!!=) x (n, _) | n < 0 || n > length x
     = error "!!= : index out of bounds"
 (!!=) (x:xs) (0, nv) = nv:xs
@@ -195,20 +206,20 @@ blanks s =
 
 -- | Tests that the expected value can be found at the updated position
 prop_bangBangEquals_correct :: Eq a => [a] -> (Int, a) -> Bool
-prop_bangBangEquals_correct list (bi, a) =
-    null list || -- ok illegal argument
+prop_bangBangEquals_correct children (bi, a) =
+    null children || -- auto ok illegal argument
     newList !! i == a
     where
-        newList = list !!= (i, a)
-        i = bi `mod` length list
+        newList = children !!= (i, a)
+        i = bi `mod` length children
 
 -- E3
 
 -- | Updates a given sudoku given a position and a new value
 update :: Sudoku -> Pos -> Maybe Int -> Sudoku
 update s (x,y) nv =
-    Sudoku [ if row == y then list !!= (x, nv) else list
-             | (row, list) <- zip [0..8] (rows s)]
+    Sudoku [ if row == y then children !!= (x, nv) else children
+             | (row, children) <- zip [0..8] (rows s)]
 
 -- | Tests that the expected value can be found at the updated cell
 prop_update_updated :: Sudoku -> Pos -> Maybe Int -> Bool
@@ -221,7 +232,7 @@ prop_update_updated s (bx,by) nv =
 
 -- E4
 
--- | Given a sudoku and a position, returns a list of candiadates
+-- | Given a sudoku and a position, returns a children of candiadates
 -- (i.e. legal numbers) that could be placed at the position
 candidates :: Sudoku -> Pos -> [Int]
 candidates s (x,y) =
@@ -252,48 +263,20 @@ prop_candidates_correct_cell s (bx,by) =
         possibleSudokus = map (update s (x,y) . Just) (candidates s (x,y))
 
 -- F1
+          
+-- | Attempts to solve a given sudoku by trying all the candidates of a 
+-- given position.
+solve :: Sudoku -> Pos -> Maybe Sudoku  
+solve sud pos 
+    | null cands = Nothing
+    | otherwise = listToMaybe (catMaybes solutions)
+    where
+        solutions   = map solve' children
+        children    = map (update sud pos . Just) cands -- list of all possible children 
+        cands       = candidates sud pos
 
-solve :: Sudoku -> Maybe Sudoku
-solve sud | isOkay sud && isSudoku sud = solve' sud
-          | otherwise                  = Nothing
-
+-- | Solves a sudoku
 solve' :: Sudoku -> Maybe Sudoku
-solve' sud
-  | null (blanks sud) = Just sud
-  | otherwise = if isJust res
-                then res
-                else Nothing
-                  where res = evalBlanks sud (blanks sud)
-
-evalBlanks :: Sudoku -> [Pos] -> Maybe Sudoku
-evalBlanks sud []     = Nothing
-evalBlanks sud (x:xs) =
-  if isJust result
-  then result
-  else evalBlanks sud xs
-    where result = checkCands sud x (candidates sud x)
-
-checkCands :: Sudoku -> Pos -> [Int] -> Maybe Sudoku
-checkCands _ _ []         = Nothing
-checkCands sud pos (x:xs) =
-  if isJust result
-  then result
-  else checkCands sud pos xs
-    where result = solve' (update sud pos (Just x))
-
-{-
-solve' :: Sudoku -> Maybe Sudoku
-solve' sud | null (blanks sud) = Just sud
-solve' sud = fromMaybe Nothing maybeResult
-  where
-    maybeResult = find isJust listOfMaybes
-    listOfMaybes = map solve' toEvalSudokus
-    toEvalSudokus = concatMap (candsToSud sud) pointCandidates
-    pointCandidates = -- list of tuples: (Pos, list_of_possible_candidates)
-      map (\(x,y) -> ((x,y), candidates sud (x,y))) (blanks sud)
-
-
-candsToSud :: Sudoku -> (Pos, [Int]) -> [Sudoku]
-candsToSud sud ((x,y), cands) =
-    map ((update sud (x,y)) . \x -> Just x) cands
--}
+solve' sud  | null blanks'  = Just sud
+            | otherwise     = solve sud (head blanks')
+                where blanks' = blanks sud
