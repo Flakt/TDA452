@@ -1,8 +1,9 @@
 module Sudoku where
-import Data.Maybe
-import Data.List
-import Data.List.Split
-import Test.QuickCheck
+import           Data.List
+import           Data.List.Split
+import           Data.Maybe
+import           System.Environment
+import           Test.QuickCheck
 
 newtype Sudoku = Sudoku {rows :: [[Maybe Int]]}
     deriving (Eq)
@@ -28,9 +29,6 @@ example =
     n = Nothing
     j = Just
 
-nearlySolved = readSudoku "/home/schan/Documents/TDA452/Labb3/nearsolved.sud"
-solvalbe = readSudoku "/home/schan/Documents/TDA452/Labb3/solvable.sud"
-
 -- A1
 
 -- | Returns a blank 9x9 sudoku grid
@@ -38,10 +36,6 @@ solvalbe = readSudoku "/home/schan/Documents/TDA452/Labb3/solvable.sud"
 allBlankSudoku :: Sudoku
 allBlankSudoku =
     Sudoku (replicate 9 (replicate 9 Nothing))
-
-allFilledSudoku :: Sudoku
-allFilledSudoku =
-    Sudoku (replicate 9 (replicate 9 (Just 1)))
 
 -- A2
 
@@ -55,14 +49,10 @@ isSudoku sudoku =
 
 -- A3
 
-isEmpty :: Sudoku -> Bool
-isEmpty sudoku =
-    and [and [isNothing x | x <- row] | row <- rows sudoku]
-
+-- | Tests if a sudoku is filled, i.e. contains no Nothing values
 isFilled :: Sudoku -> Bool
 isFilled sudoku =
-    and [and [isJust x | x <- row] | row <- rows sudoku]
-
+    all isJust (concat (rows sudoku))
 
 -- B1
 
@@ -107,7 +97,7 @@ toMaybe c   = Just ((fromEnum c :: Int) + (-48))
 
 -- | Generates a cell in (Just 1..9, Nothing)
 cell :: Gen (Maybe Int)
-cell = frequency [(9, return Nothing),
+cell = frequency [(3, return Nothing),
                   (1, do n <- choose (1,9)
                          return (Just n))]
 
@@ -127,15 +117,14 @@ prop_Sudoku = isSudoku
 
 -- D1
 
-
 type Block = [Maybe Int]
 
--- | tests a block (3x3 square) such that there are no duplicate numbers
+-- | tests a block (9 elements) such that there are no duplicate numbers
 isOkayBlock :: Block -> Bool
 isOkayBlock block =
     nub numbers == numbers
     where
-        numbers = [fromMaybe 0 x | x<- block, isJust x ] :: [Int]
+        numbers = [fromMaybe 0 x | x <- block, isJust x ] :: [Int]
 
 -- D2
 -- | Given a sudoku, converts it into all different blocks,
@@ -161,7 +150,7 @@ prop_blocks_lengths s =
 
 -- D3
 
--- | tests a sudoku such that a number does not occurr twice in a block
+-- | Tests a sudoku such that a number does not occurr twice in a block
 -- (i.e. rows, columns and 3x3 subsquares)
 isOkay :: Sudoku -> Bool
 isOkay s = all isOkayBlock (blocks s)
@@ -170,7 +159,7 @@ isOkay s = all isOkayBlock (blocks s)
 
 type Pos = (Int, Int)
 
--- | Given a sudoku, returns a children of coordinates
+-- | Given a sudoku, returns a list of coordinates
 -- corresponding to empty spaces
 blanks :: Sudoku -> [Pos]
 blanks s =
@@ -189,16 +178,15 @@ prop_blanks sud =
     where results = blanks sud
 
 valueAt :: Sudoku -> Pos -> Maybe Int
-valueAt sud (x,y) = 
+valueAt sud (x,y) =
     (rows sud !! y) !! x
-   
 
 -- E2
 
--- | Given a children, and a tuple (index, new_value), updates the element in
--- the children at the given index to the given new_value
+-- | Given a list, and a tuple (index, new_value), updates the element in
+-- the list at the given index to the given new_value
 (!!=) :: [a] -> (Int, a) -> [a]
-(!!=) [] (_, _) = error "!!= : applied to empty children"
+(!!=) [] (_, _) = error "!!= : applied to empty list"
 (!!=) x (n, _) | n < 0 || n > length x
     = error "!!= : index out of bounds"
 (!!=) (x:xs) (0, nv) = nv:xs
@@ -206,20 +194,20 @@ valueAt sud (x,y) =
 
 -- | Tests that the expected value can be found at the updated position
 prop_bangBangEquals_correct :: Eq a => [a] -> (Int, a) -> Bool
-prop_bangBangEquals_correct children (bi, a) =
-    null children || -- auto ok illegal argument
-    newList !! i == a
+prop_bangBangEquals_correct list (bi, nv) =
+    null list || -- auto ok illegal argument
+    newList !! i == nv
     where
-        newList = children !!= (i, a)
-        i = bi `mod` length children
+        newList = list !!= (i, nv)
+        i = bi `mod` length list
 
 -- E3
 
 -- | Updates a given sudoku given a position and a new value
 update :: Sudoku -> Pos -> Maybe Int -> Sudoku
 update s (x,y) nv =
-    Sudoku [ if row == y then children !!= (x, nv) else children
-             | (row, children) <- zip [0..8] (rows s)]
+    Sudoku [ if row == y then list !!= (x, nv) else list
+             | (row, list) <- zip [0..8] (rows s)]
 
 -- | Tests that the expected value can be found at the updated cell
 prop_update_updated :: Sudoku -> Pos -> Maybe Int -> Bool
@@ -232,7 +220,7 @@ prop_update_updated s (bx,by) nv =
 
 -- E4
 
--- | Given a sudoku and a position, returns a children of candiadates
+-- | Given a sudoku and a position, returns a list of candidates
 -- (i.e. legal numbers) that could be placed at the position
 candidates :: Sudoku -> Pos -> [Int]
 candidates s (x,y) =
@@ -263,27 +251,32 @@ prop_candidates_correct_cell s (bx,by) =
         possibleSudokus = map (update s (x,y) . Just) (candidates s (x,y))
 
 -- F1
-          
--- | Attempts to solve a given sudoku by trying all the candidates of a 
+
+-- | Given a Sudoku, returns a solution or Nothing if there are none
+solve :: Sudoku -> Maybe Sudoku
+solve sud | isSudoku sud && isOkay sud = solve'' sud
+          | otherwise                  = Nothing
+
+-- | Attempts to solve a given sudoku by trying all the candidates of a
 -- given position.
-solve' :: Sudoku -> Pos -> Maybe Sudoku  
-solve' sud pos 
+solve' :: Sudoku -> Pos -> Maybe Sudoku
+solve' sud pos
     | null cands = Nothing
     | otherwise = listToMaybe (catMaybes solutions)
     where
-        solutions   = map solve children
-        children    = map (update sud pos . Just) cands -- list of all possible children 
+        solutions   = map solve'' children
+        children    = map (update sud pos . Just) cands -- list of all possible children
         cands       = candidates sud pos
 
 -- | Solves a sudoku
-solve :: Sudoku -> Maybe Sudoku
-solve sud   | null blanks' = Just sud
-            | otherwise    = solve' sud (head blanks')
+solve'' :: Sudoku -> Maybe Sudoku
+solve'' sud   | null blanks' = Just sud
+              | otherwise    = solve' sud (head blanks')
                 where blanks' = blanks sud
 
 -- F2
 
--- | Convenience function
+-- | See solve
 readAndSolve :: FilePath -> IO ()
 readAndSolve fp = do
     sud <- readSudoku fp
@@ -295,10 +288,10 @@ readAndSolve fp = do
 -- | Tests if the first sudoku is a solution of the second sudoku
 isSolutionOf :: Sudoku -> Sudoku -> Bool
 isSolutionOf sol sud =
-    isOkay sol &&           -- all blocks are legal
-    isSudoku sol &&         -- the dimensions are correct
-    null (blanks sol) &&    -- there are no blanks
-    isSubsetOf sol sud      -- 
+    isOkay     sol &&     -- all blocks are legal
+    isSudoku   sol &&     -- the dimensions are correct
+    isFilled   sol &&     -- there are no blanks
+    isSubsetOf sol sud
 
 -- | Tests that for all pairs of corresponding values in sol and sud
 -- that sol.v == sud.v OR that sud.v == Nothing
@@ -308,3 +301,12 @@ isSubsetOf sol sud =
     where
         zipped = zip (toList sol) (toList sud)
         toList = concat . rows
+
+-- F4
+
+-- | Tests that all solutions are sound
+prop_SolveSound :: Sudoku -> Property
+prop_SolveSound sud =
+    isSudoku sud && isOkay sud ==> solution `isSolutionOf` sud
+    where
+        (Just solution) = solve sud
