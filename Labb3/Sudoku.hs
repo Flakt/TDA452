@@ -172,8 +172,8 @@ blanks s =
             coords = [(x,y) | y <- [0..8], x<-[0..8]]
 
 
-prop_blanks :: Sudoku -> Bool
-prop_blanks sud =
+prop_blanks_allBlanks :: Sudoku -> Bool
+prop_blanks_allBlanks sud =
     all isNothing (map (valueAt sud) results)
     where results = blanks sud
 
