@@ -43,11 +43,11 @@ allBlankSudoku =
 isSudoku :: Sudoku -> Bool
 isSudoku sudoku =
     all ((==9) . length) (rows sudoku) &&
-    all (`elem` legal) (concat (rows sudoku))
+    all (`elem` legalVals) (concat (rows sudoku))
     where
-        legal = Nothing:[Just n | n <- [1..9]]
+        legalVals = Nothing:[Just n | n <- [1..9]]
 
--- A3
+-- A3   
 
 -- | Tests if a sudoku is filled, i.e. contains no Nothing values
 isFilled :: Sudoku -> Bool
@@ -221,7 +221,7 @@ prop_update_updated s (bx,by) nv =
 -- E4
 
 -- | Given a sudoku and a position, returns a list of candidates
--- (i.e. legal numbers) that could be placed at the position
+-- (i.e. legalVals numbers) that could be placed at the position
 candidates :: Sudoku -> Pos -> [Int]
 candidates s (x,y) =
     [fromJust c | c <- [Just n | n <- [1..9]], c `notElem` relevantCells]
@@ -238,7 +238,7 @@ prop_candidates_correct s =
     where coords = [(x,y) | x <- [0..8], y <- [0..8]]
 
 -- | Given and a sudoku, tests if placing all candidates at that cell results
--- in a legal sudoku (i.e. isSudoku && isOkay)
+-- in a legalVals sudoku (i.e. isSudoku && isOkay)
 prop_candidates_correct_cell :: Sudoku -> Pos -> Bool
 prop_candidates_correct_cell s (bx,by) =
     (bx,by) `elem` blanks s ||          -- ok illegal arguments
@@ -288,7 +288,7 @@ readAndSolve fp = do
 -- | Tests if the first sudoku is a solution of the second sudoku
 isSolutionOf :: Sudoku -> Sudoku -> Bool
 isSolutionOf sol sud =
-    isOkay     sol &&     -- all blocks are legal
+    isOkay     sol &&     -- all blocks are legalVals
     isSudoku   sol &&     -- the dimensions are correct
     isFilled   sol &&     -- there are no blanks
     isSubsetOf sol sud
