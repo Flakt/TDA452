@@ -1,23 +1,25 @@
 module Tsuro where
+import Data.List
+import Data.Maybe
+
+-- TODO evaluate if a Map is more useful in some cases
 
 main = undefined
-
 
 -- Magic constants for board size
 bW = 6      -- board width
 q = bW - 1  -- max board index
 
--- The entire game state, including players
+-- | The entire game state, including players
 data Game = Game {players :: Player, board :: Board, deck :: [Tile]}
 
--- The board, a list of rows of tiles, standard size is 6x6
+-- | The board, a list of rows of tiles, standard size is 6x6
 data Board = Board {tiles :: [[Maybe Tile]], pieces :: [Piece]}
 
--- A player piece, situated at a tile and a connection 
--- pieces do not have a position at "turn 0"
-data Piece = Piece {id :: ID, pos :: Maybe Pos, link :: Maybe Link}
+-- | A player piece, situated at a tile and a connection 
+data Piece = Piece {piece_id :: ID, pos :: Pos, link :: Link}
 
--- A single tile, which 
+-- | A single tile, which 
 newtype Tile = Tile {conn :: [Connection]}
     deriving (Eq)
 
@@ -33,7 +35,7 @@ newtype Tile = Tile {conn :: [Connection]}
 type Connection = (Link, Link)
 type Link = Int
 
-type Player = (ID, Hand)
+data Player = Plauer {player_id :: ID, hand :: [Tile]}
 type ID = Int
 
 -- A list of tiles (strictly speaking it is unordered)
@@ -49,12 +51,15 @@ updateBoard b p t = Board new_tiles new_players
         new_players = undefined -- TODO
         new_tiles = updateTiles (tiles b) p t
 
--- Updates a piece (moves it forward until it reaches a bare connection)
+-- | Updates a piece (moves it forward until it reaches a bare connection)
 -- * recursively
 updatePiece :: Board -> Piece -> Board
-updatePiece b p = undefined -- TODO
+updatePiece b piece = undefined -- TODO
+        where
+            tile = nextTile b (pos piece) (link piece)
 
--- Returns Just the next tile to travel to, or Nothing 
+
+-- | Returns Just the next tile to travel to, or Nothing 
 nextTile :: Board -> Pos -> Link -> Maybe Tile
 nextTile b p l = b @@ p'
     where
@@ -76,8 +81,8 @@ linkOffs l  | l == 0 || l == 1 = ( 0,-1)
 updateTiles :: [[Maybe Tile]] -> Pos -> Tile -> [[Maybe Tile]]
 updateTiles ts (x,y) new_tile
     | x < 0 || x > q || y < 0 || y > q = error "updateTiles : pos out of bounds"
-    | otherwise =                   upperRows ++ 
-                    (leftTiles ++ (Just new_tile) : rightTiles) : 
+    | otherwise =                   upperRows ++
+                    (leftTiles ++ (Just new_tile) : rightTiles) :
                                     lowerRows
     where
             (upperRows, thisRow : lowerRows) = splitAt y ts
@@ -86,8 +91,25 @@ updateTiles ts (x,y) new_tile
 -- Given a position, returns all the "Manhattan"-adjacent tiles
 -- * with respect to the edges of the board
 adjacentPos :: Pos -> [Pos]
-adjacentPos (a,b) = zip [  a,a+1,  a,a-1] 
+adjacentPos (a,b) = zip [  a,a+1,  a,a-1]
                         [b+1,  b,b-1,  b]
 
+-- | The legal positions on a given board for a given player
+-- returns Nothing if the player doesn't have a piece
+-- TODO should maybe consider that the position is on the board
+legalPos :: Board -> Player -> Maybe Pos
+legalPos b p = if isJust piece then Just pos' else Nothing
+    where
+        pos' = (pos piece') +++ linkOffs  (link piece')
+        piece' = fromJust piece
+        piece = find (\x -> piece_id x == player_id p) (pieces b)
+
+-- | Position addition
 (+++) :: Pos -> Pos -> Pos
 (+++) (a,b) (c,d) = (a+c,b+d)
+
+-- | Rotates a tile (by rotating its connections) by 90 deg
+rotateTile :: Tile -> Tile
+rotateTile t = Tile (map transposeConn (conn t))
+    where transposeConn (a,b) = (transposeLink a,transposeLink b)
+          transposeLink x = (x +2) `mod` 8
