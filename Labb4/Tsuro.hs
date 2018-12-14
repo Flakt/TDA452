@@ -1,5 +1,7 @@
 module Tsuro where
 
+import Data.Maybe
+
 main = undefined
 
 
@@ -13,11 +15,11 @@ data Game = Game {players :: Player, board :: Board, deck :: [Tile]}
 -- The board, a list of rows of tiles, standard size is 6x6
 data Board = Board {tiles :: [[Maybe Tile]], pieces :: [Piece]}
 
--- A player piece, situated at a tile and a connection 
+-- A player piece, situated at a tile and a connection
 -- pieces do not have a position at "turn 0"
-data Piece = Piece {id :: ID, pos :: Maybe Pos, link :: Maybe Link}
+data Piece = Piece {iD :: ID, pos :: Maybe Pos, link :: Maybe Link}
 
--- A single tile, which 
+-- A single tile, which
 newtype Tile = Tile {conn :: [Connection]}
     deriving (Eq)
 
@@ -28,7 +30,7 @@ newtype Tile = Tile {conn :: [Connection]}
      01
     7XX2
     6XX3
-     54                                                             
+     54
 -}
 type Connection = (Link, Link)
 type Link = Int
@@ -52,9 +54,19 @@ updateBoard b p t = Board new_tiles new_players
 -- Updates a piece (moves it forward until it reaches a bare connection)
 -- * recursively
 updatePiece :: Board -> Piece -> Board
-updatePiece b p = undefined -- TODO
+updatePiece b p = if next_tile == Nothing
+                  then Board (tiles b) (pieces b)
+                  else updatePiece b new_piece
+  where
+    next_tile = nextTile b (fromJust (pos p)) (fromJust(link p))
+    new_piece = Piece (iD p) (Just new_pos) new_link
+    new_pos   = updatePos (fromJust (pos p)) (linkOffs (fromJust(link p)))
+    new_link  = undefined -- TODO
 
--- Returns Just the next tile to travel to, or Nothing 
+updatePos :: Pos -> Pos -> Pos
+updatePos (x1, y1) (x2, y2) = (x1 + x2, y1 + y2)
+
+-- Returns Just the next tile to travel to, or Nothing
 nextTile :: Board -> Pos -> Link -> Maybe Tile
 nextTile b p l = b @@ p'
     where
@@ -76,8 +88,8 @@ linkOffs l  | l == 0 || l == 1 = ( 0,-1)
 updateTiles :: [[Maybe Tile]] -> Pos -> Tile -> [[Maybe Tile]]
 updateTiles ts (x,y) new_tile
     | x < 0 || x > q || y < 0 || y > q = error "updateTiles : pos out of bounds"
-    | otherwise =                   upperRows ++ 
-                    (leftTiles ++ (Just new_tile) : rightTiles) : 
+    | otherwise =                   upperRows ++
+                    (leftTiles ++ (Just new_tile) : rightTiles) :
                                     lowerRows
     where
             (upperRows, thisRow : lowerRows) = splitAt y ts
@@ -86,7 +98,7 @@ updateTiles ts (x,y) new_tile
 -- Given a position, returns all the "Manhattan"-adjacent tiles
 -- * with respect to the edges of the board
 adjacentPos :: Pos -> [Pos]
-adjacentPos (a,b) = zip [  a,a+1,  a,a-1] 
+adjacentPos (a,b) = zip [  a,a+1,  a,a-1]
                         [b+1,  b,b-1,  b]
 
 (+++) :: Pos -> Pos -> Pos
