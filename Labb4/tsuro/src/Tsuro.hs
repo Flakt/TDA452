@@ -20,7 +20,7 @@ data Piece = Piece {piece_id :: ID, pos :: Maybe Pos, link :: Maybe Link}
 
 -- | A single tile, which 
 newtype Tile = Tile {conn :: [Connection]}
-    deriving (Eq)
+    deriving (Eq, Show)
 
 {-  Connections are internal within the Tile
     Below is a representation of how the Links are indexed
