@@ -18,10 +18,10 @@ data Game = Game {players :: Player, board :: Board, deck :: [Tile]}
 -- | The board, a list of rows of tiles, standard size is 6x6
 data Board = Board {tiles :: [[Maybe Tile]], pieces :: [Piece]}
 
--- | A player piece, situated at a tile and a connection 
+-- | A player piece, situated at a tile and a connection
 data Piece = Piece {piece_id :: ID, pos :: Maybe Pos, link :: Maybe Link}
 
--- | A single tile, which 
+-- | A single tile, which
 newtype Tile = Tile {conn :: [Connection]}
     deriving (Eq)
 
@@ -63,7 +63,7 @@ updatePiece b p = if isNothing next_tile
     next_tile = nextTile b (fromJust (pos p)) (fromJust (link p))
     new_piece = Piece (piece_id p) (Just new_pos) new_link
     new_pos   = fromJust (pos p) +++ linkOffs (fromJust(link p))
-    new_link  = undefined -- TODO
+    new_link  = snd (conn (@@ b (pos p)))
 
 -- Returns Just the next tile to travel to, or Nothing
 nextTile :: Board -> Pos -> Link -> Maybe Tile
