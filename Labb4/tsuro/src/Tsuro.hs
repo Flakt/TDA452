@@ -14,9 +14,6 @@ data Game = Game {players :: Player, board :: Board, deck :: [Tile]}
 -- | The board, a list of rows of tiles, standard size is 6x6
 data Board = Board {tiles :: [[Maybe Tile]], pieces :: [Piece]}
 
--- | A player piece, situated at a tile and a connection
-data Piece = Piece {pieceId :: ID, pos :: Maybe Pos, link :: Maybe Link}
-
 -- | A single tile, which
 newtype Tile = Tile {conn :: [Connection]}
     deriving (Eq)
@@ -33,7 +30,8 @@ newtype Tile = Tile {conn :: [Connection]}
 type Connection = (Link, Link)
 type Link = Int
 
-data Player = Plauer {playerId :: ID, hand :: [Tile]}
+data Player = Player {playerId :: ID, hand :: [Tile], pos :: Maybe Pos,
+                      link :: Maybe Link}
 type ID = Int
 
 -- A list of tiles (strictly speaking it is unordered)
@@ -49,17 +47,10 @@ updateBoard b p t = Board new_tiles new_players
         new_players = undefined -- TODO
         new_tiles = updateTiles (tiles b) p t
 
--- | Updates a piece (moves it forward until it reaches a bare connection)
--- * recursively
-updatePiece :: Board -> Piece -> Board
-updatePiece b p = if isNothing next_tile
-                  then Board (tiles b) (pieces b)
-                  else updatePiece b new_piece
-  where
-    next_tile = nextTile b (fromJust (pos p)) (fromJust (link p))
-    new_piece = Piece (pieceId p) (Just new_pos) new_link
-    new_pos   = fromJust (pos p) +++ linkOffs (fromJust(link p))
-    new_link  = snd (conn b @@ pos p)
+-- | Simulates the movement of a player piece (moves it forward until it reaches
+--  a bare connection or collides with an another player) * recursively
+movePlayer :: Board -> Player -> (Tile, Connection)
+movePlayer
 
 -- Returns Just the next tile to travel to, or Nothing
 nextTile :: Board -> Pos -> Link -> Maybe Tile
@@ -115,3 +106,7 @@ rotateTile :: Tile -> Tile
 rotateTile t = Tile (map transposeConn (conn t))
     where transposeConn (a,b) = (transposeLink a,transposeLink b)
           transposeLink x = (x +2) `mod` 8
+
+detectCollision :: Board -> Player -> Player -> Bool
+detectCollision b p1 p2 = samePosAndLink
+    where samePosAndLink = pos p1 && pos p2 && link p1 && link p2
