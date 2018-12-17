@@ -16,7 +16,7 @@ data Board = Board {tiles :: [[Maybe Tile]], pieces :: [Piece]}
 
 -- | A single tile, which
 newtype Tile = Tile {conn :: [Connection]}
-    deriving (Eq)
+    deriving (Eq, Show)
 
 {-  Connections are internal within the Tile
     Below is a representation of how the Links are indexed
@@ -45,7 +45,7 @@ updateBoard :: Board -> Pos -> Tile -> Board
 updateBoard b p t = Board new_tiles new_players
     where
         new_players = undefined -- TODO
-        new_tiles = updateTiles (tiles b) p t
+        new_tiles = updateTile (tiles b) p t
 
 -- | Simulates the movement of a player piece (moves it forward until it reaches
 --  a bare connection or collides with an another player) * recursively
@@ -70,16 +70,18 @@ linkOffs l  | l == 0 || l == 1 = ( 0,-1)
             | l == 6 || l == 7 = (-1, 0)
             | otherwise = error "linkOffs : bad value"
 
--- Updates a given tile
-updateTiles :: [[Maybe Tile]] -> Pos -> Tile -> [[Maybe Tile]]
-updateTiles ts (x,y) new_tile
-    | x < 0 || x > q || y < 0 || y > q = error "updateTiles : pos out of bounds"
+-- Replaces a tile in a matrix of tiles with a given tile
+updateTile :: [[Maybe Tile]] -> Pos -> Tile -> [[Maybe Tile]]
+updateTile ts (x,y) new_tile
+    | x < 0 || x > x_max || y < y_max || y > q = error "updateTiles : pos out of bounds"
     | otherwise =                   upperRows ++
                     (leftTiles ++ Just new_tile : rightTiles) :
                                     lowerRows
     where
             (upperRows, thisRow : lowerRows) = splitAt y ts
             (leftTiles, _ : rightTiles) = splitAt x thisRow
+            x_max = length (ts !! y)
+            y_max = length ts
 
 -- Given a position, returns all the "Manhattan"-adjacent tiles
 -- * with respect to the edges of the board
