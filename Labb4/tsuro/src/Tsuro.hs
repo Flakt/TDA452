@@ -49,8 +49,40 @@ updateBoard b p t = Board new_tiles new_players
 
 -- | Simulates the movement of a player piece (moves it forward until it reaches
 --  a bare connection or collides with an another player) * recursively
-movePlayer :: Board -> Player -> (Tile, Connection)
-movePlayer
+movePlayer :: Board -> Pos -> Link -> (Tile, Connection)
+movePlayer b p l | posOutOfBounds p = (tile, connection)
+movePlayer b p l | isNothing next_tile = (tile, connection)
+movePlayer b p l = movePlayer b newPos newLink
+    where
+      tile       = b @@ p
+      connection = getConnection l tile
+      newPos     = p +++ linkOffs l
+      newLink    = mapLinks l
+
+
+-- | Gets the appropiate connection based on the given link
+getConnection :: Link -> Tile -> Connection
+getConnection l t = map f (conn tile)
+    where f (a, b) = a == target || b == target
+          target   = mapLinks l
+
+-- | Checks if a given pos is out of the game boundaries
+posOutOfBounds :: Pos -> Bool
+posOutOfBounds pos = (x > bw || y > bw) || (x < 0 || y < 0)
+    where
+      x = fst pos
+      y = snd pos
+
+-- | Maps links with corresponding link of the other tile
+mapLinks :: Link -> Link
+mapLinks 0 = 5
+mapLinks 1 = 4
+mapLinks 2 = 7
+mapLinks 3 = 6
+mapLinks 4 = 1
+mapLinks 5 = 0
+mapLinks 6 = 3
+mapLinks 7 = 2
 
 -- Returns Just the next tile to travel to, or Nothing
 nextTile :: Board -> Pos -> Link -> Maybe Tile
