@@ -3,7 +3,6 @@ import Data.List
 import Data.Maybe
 
 -- TODO evaluate if a Map is more useful in some cases
-import Data.Maybe
 
 -- Magic constants for board size
 bW = 6      -- board width
@@ -16,7 +15,7 @@ data Game = Game {players :: Player, board :: Board, deck :: [Tile]}
 data Board = Board {tiles :: [[Maybe Tile]], pieces :: [Piece]}
 
 -- | A player piece, situated at a tile and a connection
-data Piece = Piece {piece_id :: ID, pos :: Maybe Pos, link :: Maybe Link}
+data Piece = Piece {pieceId :: ID, pos :: Maybe Pos, link :: Maybe Link}
 
 -- | A single tile, which
 newtype Tile = Tile {conn :: [Connection]}
@@ -34,7 +33,7 @@ newtype Tile = Tile {conn :: [Connection]}
 type Connection = (Link, Link)
 type Link = Int
 
-data Player = Plauer {player_id :: ID, hand :: [Tile]}
+data Player = Plauer {playerId :: ID, hand :: [Tile]}
 type ID = Int
 
 -- A list of tiles (strictly speaking it is unordered)
@@ -58,9 +57,9 @@ updatePiece b p = if isNothing next_tile
                   else updatePiece b new_piece
   where
     next_tile = nextTile b (fromJust (pos p)) (fromJust (link p))
-    new_piece = Piece (piece_id p) (Just new_pos) new_link
+    new_piece = Piece (pieceId p) (Just new_pos) new_link
     new_pos   = fromJust (pos p) +++ linkOffs (fromJust(link p))
-    new_link  = snd (conn (@@ b (pos p)))
+    new_link  = snd (conn b @@ pos p)
 
 -- Returns Just the next tile to travel to, or Nothing
 nextTile :: Board -> Pos -> Link -> Maybe Tile
@@ -85,7 +84,7 @@ updateTiles :: [[Maybe Tile]] -> Pos -> Tile -> [[Maybe Tile]]
 updateTiles ts (x,y) new_tile
     | x < 0 || x > q || y < 0 || y > q = error "updateTiles : pos out of bounds"
     | otherwise =                   upperRows ++
-                    (leftTiles ++ (Just new_tile) : rightTiles) :
+                    (leftTiles ++ Just new_tile : rightTiles) :
                                     lowerRows
     where
             (upperRows, thisRow : lowerRows) = splitAt y ts
@@ -103,9 +102,9 @@ adjacentPos (a,b) = zip [  a,a+1,  a,a-1]
 legalPos :: Board -> Player -> Maybe Pos
 legalPos b p = if isJust piece then Just pos' else Nothing
     where
-        pos' = (fromJust (pos piece')) +++ linkOffs  (fromJust (link piece'))
+        pos' = fromJust (pos piece') +++ linkOffs  (fromJust (link piece'))
         piece' = fromJust piece
-        piece = find (\x -> piece_id x == player_id p) (pieces b)
+        piece = find (\x -> pieceId x == playerId p) (pieces b)
 
 -- | Position addition
 (+++) :: Pos -> Pos -> Pos
