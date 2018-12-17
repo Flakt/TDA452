@@ -1,6 +1,7 @@
 module Tsuro where
 import Data.List
 import Data.Maybe
+import System.Random
 
 -- TODO evaluate if a Map is more useful in some cases
 
@@ -26,19 +27,21 @@ newtype Tile = Tile {conn :: [Connection]}
 
 -- | Given a stdgen, returns a new tile (and the next stdgen)
 newTile :: StdGen -> (Tile, StdGen)
-newTile gen = Tile conns
+newTile gen = (Tile (c ls), gen') 
     where
-        conns = replicate 4 (0,0) -- TODO
+        c [a,b,c,d,e,f,g,h] = [(a,b),(c,d),(e,f),(g,h)]
+        (ls, gen') = shuffle gen [0..7]
+        
 
-shuffle :: StdGen -> [a] -> ([a], StdGen)
+shuffle :: Eq a => StdGen -> [a] -> ([a], StdGen)
 shuffle gen ls = shuffle' gen ls []
 
-shuffle' :: StdGen -> [a] -> [a] -> ([a], StdGen)
+shuffle' :: Eq a => StdGen -> [a] -> [a] -> ([a], StdGen)
 shuffle' gen  [] new = (new, gen)
-shuffle' gen old new = shuffle' gen' old' new'
-        where
-            new' = -- TODO filter first?
-            (gen', v) = randomR (0, length old (-1))
+shuffle' gen old new = shuffle' gen' (delete toAdd old) (toAdd : new)
+    where
+        toAdd = old !! v    
+        (v, gen') = randomR (0, (length old) + (-1)) gen
 
 {-  Connections are internal within the Tile
     Below is a representation of how the Links are indexed
