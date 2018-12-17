@@ -1,7 +1,10 @@
-module TsuroProps where
+module Main where
 import Tsuro
 import Test.QuickCheck
 
+main :: IO ()
+main = print "not implemented"
+    
 instance Arbitrary Tile where
     arbitrary = undefined -- TODO   
 

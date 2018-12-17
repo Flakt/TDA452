@@ -1,5 +1,3 @@
-# Revision history for tsuro
+# Changelog for tsuro
 
-## 0.1.0.0 -- YYYY-mm-dd
-
-* First version. Released on an unsuspecting world.
+## Unreleased changes
