@@ -5,9 +5,6 @@ import Data.Maybe
 -- TODO evaluate if a Map is more useful in some cases
 import Data.Maybe
 
-main = undefined
-
-
 -- Magic constants for board size
 bW = 6      -- board width
 q = bW - 1  -- max board index
