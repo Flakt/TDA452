@@ -3,6 +3,10 @@ import Data.List
 import Data.Maybe
 
 -- TODO evaluate if a Map is more useful in some cases
+import Data.Maybe
+
+main = undefined
+
 
 -- Magic constants for board size
 bW = 6      -- board width
@@ -28,7 +32,7 @@ newtype Tile = Tile {conn :: [Connection]}
      01
     7XX2
     6XX3
-     54                                                             
+     54
 -}
 type Connection = (Link, Link)
 type Link = Int
@@ -52,12 +56,19 @@ updateBoard b p t = Board new_tiles new_players
 -- | Updates a piece (moves it forward until it reaches a bare connection)
 -- * recursively
 updatePiece :: Board -> Piece -> Board
-updatePiece b piece = undefined -- TODO
-        where
-            tile = nextTile b (pos piece) (link piece)
+updatePiece b p = if next_tile == Nothing
+                  then Board (tiles b) (pieces b)
+                  else updatePiece b new_piece
+  where
+    next_tile = nextTile b (fromJust (pos p)) (fromJust(link p))
+    new_piece = Piece (iD p) (Just new_pos) new_link
+    new_pos   = updatePos (fromJust (pos p)) (linkOffs (fromJust(link p)))
+    new_link  = undefined -- TODO
 
+updatePos :: Pos -> Pos -> Pos
+updatePos (x1, y1) (x2, y2) = (x1 + x2, y1 + y2)
 
--- | Returns Just the next tile to travel to, or Nothing 
+-- Returns Just the next tile to travel to, or Nothing
 nextTile :: Board -> Pos -> Link -> Maybe Tile
 nextTile b p l = b @@ p'
     where
