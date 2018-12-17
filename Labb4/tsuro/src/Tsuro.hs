@@ -19,7 +19,7 @@ data Game = Game {players :: Player, board :: Board, deck :: [Tile]}
 data Board = Board {tiles :: [[Maybe Tile]], pieces :: [Piece]}
 
 -- | A player piece, situated at a tile and a connection 
-data Piece = Piece {piece_id :: ID, pos :: Pos, link :: Link}
+data Piece = Piece {piece_id :: ID, pos :: Maybe Pos, link :: Maybe Link}
 
 -- | A single tile, which 
 newtype Tile = Tile {conn :: [Connection]}
@@ -56,17 +56,14 @@ updateBoard b p t = Board new_tiles new_players
 -- | Updates a piece (moves it forward until it reaches a bare connection)
 -- * recursively
 updatePiece :: Board -> Piece -> Board
-updatePiece b p = if next_tile == Nothing
+updatePiece b p = if isNothing next_tile
                   then Board (tiles b) (pieces b)
                   else updatePiece b new_piece
   where
-    next_tile = nextTile b (fromJust (pos p)) (fromJust(link p))
-    new_piece = Piece (iD p) (Just new_pos) new_link
-    new_pos   = updatePos (fromJust (pos p)) (linkOffs (fromJust(link p)))
+    next_tile = nextTile b (fromJust (pos p)) (fromJust (link p))
+    new_piece = Piece (piece_id p) (Just new_pos) new_link
+    new_pos   = fromJust (pos p) +++ linkOffs (fromJust(link p))
     new_link  = undefined -- TODO
-
-updatePos :: Pos -> Pos -> Pos
-updatePos (x1, y1) (x2, y2) = (x1 + x2, y1 + y2)
 
 -- Returns Just the next tile to travel to, or Nothing
 nextTile :: Board -> Pos -> Link -> Maybe Tile
@@ -109,7 +106,7 @@ adjacentPos (a,b) = zip [  a,a+1,  a,a-1]
 legalPos :: Board -> Player -> Maybe Pos
 legalPos b p = if isJust piece then Just pos' else Nothing
     where
-        pos' = (pos piece') +++ linkOffs  (link piece')
+        pos' = (fromJust (pos piece')) +++ linkOffs  (fromJust (link piece'))
         piece' = fromJust piece
         piece = find (\x -> piece_id x == player_id p) (pieces b)
 
