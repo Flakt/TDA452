@@ -23,7 +23,23 @@ instance Show Board where
 -- | A single tile, which
 newtype Tile = Tile {conn :: [Connection]}
     deriving (Eq, Show)
-    
+
+-- | Given a stdgen, returns a new tile (and the next stdgen)
+newTile :: StdGen -> (Tile, StdGen)
+newTile gen = Tile conns
+    where
+        conns = replicate 4 (0,0) -- TODO
+
+shuffle :: StdGen -> [a] -> ([a], StdGen)
+shuffle gen ls = shuffle' gen ls []
+
+shuffle' :: StdGen -> [a] -> [a] -> ([a], StdGen)
+shuffle' gen  [] new = (new, gen)
+shuffle' gen old new = shuffle' gen' old' new'
+        where
+            new' = -- TODO filter first?
+            (gen', v) = randomR (0, length old (-1))
+
 {-  Connections are internal within the Tile
     Below is a representation of how the Links are indexed
     Rotating a tile is done by transposing its connections
