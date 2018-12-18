@@ -140,12 +140,6 @@ adjacentPos :: Pos -> [Pos]
 adjacentPos (a,b) = zip [  a,a+1,  a,a-1]
                         [b+1,  b,b-1,  b]
 
--- | The legal positions on a given board for a given player
--- returns Nothing if the player doesn't have a piece
--- TODO should maybe consider that the position is on the board
-legalPos :: Board -> Player -> Maybe Pos
-legalPos b p = undefined -- TODO
-
 -- | Position addition
 (+++) :: Pos -> Pos -> Pos
 (+++) (a,b) (c,d) = (a+c,b+d)
