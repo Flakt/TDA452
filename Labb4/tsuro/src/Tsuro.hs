@@ -10,11 +10,28 @@ bw = 6      -- board width
 q = bw - 1  -- max board index
 
 -- | The entire game state, including players
-data Game = Game {players :: Player, board :: Board, deck :: [Tile]}
+data Game = Game {players :: [Player], board :: Board, deck :: [Tile], turnNum :: Int}
+
+gameNew :: StdGen -> (Game, StdGen)
+gameNew gen = (Game players boardNew deck' 0, gen')
+    where
+        gen' = undefined -- TODO
+        deck' = undefined -- TODO
+        players = []
+        deck = deckNew
+
+-- | Returns a new deck of tiles (always the same order)
+deckNew :: [Tile]
+deckNew = undefined -- TODO
+
+-- | Given a deck and a number, draws that many tiles from the deck,
+-- returning a tuple; respectively the new deck and the drawn tiles
+drawTiles :: [Tile] -> Int -> ([Tile], [Tile])  
+drawTiles deck n = undefined -- TODO
 
 -- | The board, a list of rows of tiles, standard size is 6x6
 data Board = Board {tiles :: [[Maybe Tile]]}
-emptyBoard = Board (replicate bw (replicate bw Nothing))
+boardNew = Board (replicate bw (replicate bw Nothing))
 instance Show Board where
     show b = concat lines
         where 
@@ -26,13 +43,13 @@ newtype Tile = Tile {conn :: [Connection]}
     deriving (Eq, Show)
 
 -- | Given a stdgen, returns a new tile (and the next stdgen)
-newTile :: StdGen -> (Tile, StdGen)
-newTile gen = (Tile (c ls), gen') 
+tileNew :: StdGen -> (Tile, StdGen)
+tileNew gen = (Tile (c ls), gen') 
     where
         c [a,b,c,d,e,f,g,h] = [(a,b),(c,d),(e,f),(g,h)]
         (ls, gen') = shuffle gen [0..7]
         
-
+-- | Shuffles a list
 shuffle :: Eq a => StdGen -> [a] -> ([a], StdGen)
 shuffle gen ls = shuffle' gen ls []
 
@@ -59,6 +76,7 @@ type Link = Int
 -- and a starting position
 data Player = Player {playerId :: ID, hand :: [Tile], pos :: Pos,
                       link :: Link}
+                      deriving (Show, Eq)
 type ID = Int
 
 -- A list of tiles (strictly speaking it is unordered)
@@ -67,7 +85,6 @@ type Hand = [Tile]
 type Pos = (Int, Int)
 
 -- Updates the board by placing the tile on the given position
--- * causes pieces to slide
 updateBoard :: Board -> Pos -> Tile -> Board
 updateBoard b p t = Board (updateTile (tiles b) p t)
 
@@ -124,7 +141,8 @@ linkOffs l  | l == 0 || l == 1 = ( 0,-1)
 -- Replaces a tile in a matrix of tiles with a given tile
 updateTile :: [[Maybe Tile]] -> Pos -> Tile -> [[Maybe Tile]]
 updateTile ts (x,y) new_tile
-    | x < 0 || x > x_max || y < y_max || y > q = error "updateTiles : pos out of bounds"
+    | x < 0 || x > x_max || y < 0 || y > y_max = error $ 
+                        "updateTiles : pos " ++ show((x,y)) ++ "out of bounds"
     | otherwise =                   upperRows ++
                     (leftTiles ++ Just new_tile : rightTiles) :
                                     lowerRows
@@ -150,6 +168,10 @@ rotateTile t = Tile (map transposeConn (conn t))
     where transposeConn (a,b) = (transposeLink a,transposeLink b)
           transposeLink x = (x +2) `mod` 8
 
---detectCollision :: Board -> Player -> Player -> Bool
---detectCollision b p1 p2 = samePosAndLink
---    where samePosAndLink = pos p1 && pos p2 && link p1 && link p2
+-- | Normalizes a tile such that all connections have their lowest link first
+-- and that the list of connections is sorted on the first link in each conn
+normalize :: Tile -> Tile
+normalize t = Tile newConn
+    where 
+        newConn = sortOn fst $
+                  map (\(a,b) -> if a < b then (a,b) else (b,a)) (conn t)

@@ -13,19 +13,28 @@ import System.Random
 main :: IO ()
 main = hspec $ describe "tsuro" $ do
 --    prop "updateTile"   $ prop_updateTile
-    prop "newTile     : conn" $ prop_newTile_conn
-    prop "adjacentPos : dist" $ prop_adjacentPos_distance
-    prop "adjacentPos : uniq" $ prop_adjacentPos_uniqueness
-    prop "mapLinks          " $ prop_mapLinks
+    prop "tileNew     : conn" prop_newTile_conn
+    prop "adjacentPos : dist" prop_adjacentPos_distance
+    prop "adjacentPos : uniq" prop_adjacentPos_uniqueness
+    prop "mapLinks          " prop_mapLinks
+    prop "normalize         " prop_normalize
 
 instance Arbitrary Tile where
      arbitrary = do
         n <- arbitrarySizedNatural
-        let sd = mkStdGen n
-        return (fst (newTile sd))
+        let gen = mkStdGen n
+        return (fst (tileNew gen))
 
 tile :: Gen Tile
 tile = arbitrary
+
+prop_normalize :: Tile -> Result
+prop_normalize t = True ==? checkNormalize (conn t') 
+    where t' = normalize t
+    
+checkNormalize :: [Connection] -> Bool
+checkNormalize [] = True
+checkNormalize ((a,b):(c,d):xs) = checkNormalize xs && a < b && c < d && a < c 
 
 --prop_updateTile :: [[Maybe Tile]] -> Pos ->  Tile -> Property
 --prop_updateTile ts (x,y) t =
