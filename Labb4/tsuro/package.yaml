@@ -25,7 +25,8 @@ dependencies:
 - hspec
 - quickcheck-assertions
 - random
-
+- gtk3
+- unix
 
 library:
   source-dirs: src
