@@ -142,7 +142,7 @@ linkOffs l  | l == 0 || l == 1 = ( 0,-1)
 updateTile :: [[Maybe Tile]] -> Pos -> Tile -> [[Maybe Tile]]
 updateTile ts (x,y) new_tile
     | x < 0 || x > x_max || y < 0 || y > y_max = error $ 
-                        "updateTiles : pos " ++ show((x,y)) ++ "out of bounds"
+                        "updateTiles : pos " ++ show (x,y) ++ "out of bounds"
     | otherwise =                   upperRows ++
                     (leftTiles ++ Just new_tile : rightTiles) :
                                     lowerRows
