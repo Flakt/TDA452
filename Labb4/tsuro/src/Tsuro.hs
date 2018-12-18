@@ -21,13 +21,11 @@ gameNew gen = (Game players boardNew deck' 0, gen')
         deck = deckNew
 
 -- | Returns a new deck of tiles (always the same order)
-deckNew :: [Tile]
-deckNew = undefined -- TODO
 
--- | Given a deck and a number, draws that many tiles from the deck,
--- returning a tuple; respectively the new deck and the drawn tiles
-drawTiles :: [Tile] -> Int -> ([Tile], [Tile])  
-drawTiles deck n = undefined -- TODO
+-- | Construct a tile from a list of links
+tile' :: [Link] -> Tile
+tile' [a,b,c,d,e,f,g,h] = Tile [(a,b),(c,d),(e,f),(g,h)]
+
 
 -- | The board, a list of rows of tiles, standard size is 6x6
 data Board = Board {tiles :: [[Maybe Tile]]}
@@ -40,13 +38,12 @@ instance Show Board where
 
 -- | A single tile, which
 newtype Tile = Tile {conn :: [Connection]}
-    deriving (Eq, Show)
+    deriving (Eq, Show, Read)
 
 -- | Given a stdgen, returns a new tile (and the next stdgen)
 tileNew :: StdGen -> (Tile, StdGen)
-tileNew gen = (Tile (c ls), gen') 
+tileNew gen = (tile' ls, gen') 
     where
-        c [a,b,c,d,e,f,g,h] = [(a,b),(c,d),(e,f),(g,h)]
         (ls, gen') = shuffle gen [0..7]
         
 -- | Shuffles a list
@@ -59,6 +56,13 @@ shuffle' gen old new = shuffle' gen' (delete toAdd old) (toAdd : new)
     where
         toAdd = old !! v    
         (v, gen') = randomR (0, (length old) + (-1)) gen
+
+
+-- | Given a deck and a number, draws that many tiles from the deck,
+-- returning a tuple; respectively the new deck and the drawn tiles
+drawTiles :: [Tile] -> Int -> ([Tile], [Tile])  
+drawTiles deck n = undefined -- TODO
+
 
 {-  Connections are internal within the Tile
     Below is a representation of how the Links are indexed
@@ -175,3 +179,48 @@ normalize t = Tile newConn
     where 
         newConn = sortOn fst $
                   map (\(a,b) -> if a < b then (a,b) else (b,a)) (conn t)
+
+deckNew :: [Tile]
+deckNew = 
+    -- 1
+    [ tile' [0,1,2,3,4,5,6,7] -- ok 
+    , tile' [0,7,1,4,2,5,3,6] -- ok
+    , tile' [0,6,1,7,2,5,3,4] -- ok
+    , tile' [0,2,1,3,4,5,6,7] -- ok
+    , tile' [0,4,1,6,2,5,3,7] -- ok
+    , tile' [0,6,1,5,2,3,4,7] -- ok
+    -- 2
+    , tile' [0,4,1,2,3,7,5,6] -- ok
+    , tile' [0,5,1,4,2,7,3,6] -- ok
+    , tile' [0,7,1,6,2,3,4,5] -- ok
+    , tile' [0,7,1,3,2,4,5,6] -- ok
+    , tile' [0,2,1,5,3,4,6,7] -- ok
+    , tile' [0,3,1,4,2,6,4,7] -- ok
+    -- 3
+    , tile' [0,1,2,7,3,5,4,6] -- ok 
+    , tile' [0,4,1,7,2,6,3,5] -- ok
+    , tile' [0,2,1,4,3,5,6,7] -- ok
+    , tile' [0,2,1,7,3,5,4,6] -- ok
+    , tile' [0,4,1,5,2,3,6,7] -- ok
+    , tile' [0,2,1,3,4,6,5,7] -- ok
+    -- 4
+    , tile' [0,4,1,5,2,6,3,7] -- ok
+    , tile' [0,1,2,5,3,6,4,7] -- ok
+    , tile' [0,6,1,5,2,4,3,7] -- ok
+    , tile' [0,1,2,6,3,5,4,7] -- ok
+    , tile' [0,3,1,6,2,5,4,7] -- ok
+    , tile' [0,1,2,7,3,6,4,5] -- ok
+    -- 5
+    , tile' [0,5,1,7,2,4,3,6] -- ok 
+    , tile' [0,7,1,2,3,4,5,6] -- ok
+    , tile' [0,1,2,7,3,4,5,6] -- ok
+    , tile' [0,3,1,2,4,7,5,6] -- ok
+    , tile' [0,3,1,7,2,5,4,6] -- ok
+    , tile' [0,7,1,3,2,6,4,5] -- ok
+    -- 6
+    , tile' [0,6,1,5,2,7,3,4] -- ok 
+    , tile' [0,5,1,6,2,4,3,7] -- ok
+    , tile' [0,2,1,6,3,4,5,7] -- ok
+    , tile' [0,5,1,4,3,6,4,7] -- ok
+    , tile' [0,4,1,3,2,7,5,6] -- ok
+    ]
