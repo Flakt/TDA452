@@ -14,7 +14,7 @@ q = bw - 1  -- max board index
 data Game = Game {players :: [Player],
                   board :: Board, 
                   deck :: [Tile], 
-                  currPlayer :: Player}
+                  currPlayer :: Maybe Player}
                     deriving (Show)
 
 -- | A player, represented by an id, a hand (which is a list of tiles)
@@ -52,7 +52,7 @@ type Pos = (Int, Int)
 gameNew :: StdGen -> [PiecePos] -> (Game, StdGen)
 gameNew gen startPos
     | length startPos > 8 = error "gameNew : too many players"
-    | otherwise = (Game players' boardNew deck' (head players'), gen')
+    | otherwise = (Game players' boardNew deck' (Just (head players')), gen')
     where
         players' = playersNew startPos
         (deck',gen') = shuffle gen deck  
@@ -63,26 +63,32 @@ gameNew gen startPos
 --      - the board (added the new tile)
 --      - the current player's hand (removed played tile and drawn new)
 --      - the deck (drawn from)
-gameMakeMove :: Game -> StdGen -> Tile -> (Game, StdGen)
-gameMakeMove game gen tile = (game {players = players', board = board', 
-                                    currPlayer = nextPlayer},           gen')
+gameMakeMove :: Game -> Tile -> Game
+gameMakeMove game tile = 
+    game{players = players', board = board', currPlayer = nextPlayer}
     where
-        gen'        = undefined
         players'    = undefined
         board'      = updateBoard b nextPos tile
-        nextPlayer  = undefined
+        nextPlayer  = getNextPlayer b p (players game)
 
-        nextPos = pos +++ linkOffs link
-        (pos, link) = movePlayer b (start p)
-        
+        nextPos = pos +++ linkOffs link         -- find pos to place tile
+        (pos, link) = movePlayer b (start p)    -- simulate the player
         b = board game
 
         p' = p {hand = hand'}
-            where hand' = hand p \\ [tile]
-        p = currPlayer game
+            where hand' = (hand p \\ [tile]) ++ drawnCard
+        (drawnCard, rem) = drawNTiles 1 (deck game) 
+        p = fromJust (currPlayer game)
+
+-- | Next player after the current player, excluding players with game over
+getNextPlayer :: Board -> Player -> [Player] -> Maybe Player
+getNextPlayer b current ls = find (not . playerIsGameOver b) ls'
+    where
+        ls' = drop (idx + 1) ls ++ take (idx + 1) ls -- make "loop"
+        idx = fromJust $ elemIndex current ls  
 
 sampleGame :: Game
-sampleGame = Game ps (boardFromDeck rem) [] (head ps)
+sampleGame = Game ps (boardFromDeck rem) [] (Just (head ps))
     where
         ps = [Player 0 h ((0,0),0)]
         (h,rem) = drawNTiles 2 deckNew

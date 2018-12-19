@@ -57,8 +57,8 @@ displayState game = do
     boxPackStart vb boardGrid PackNatural 0     
 
     -- add the current player's hand
-    let current = currPlayer game
-    handBox <- displayHand (hand current)
+    let ls = maybe [] hand (currPlayer game)
+    handBox <- displayHand ls
     boxPackStart vb handBox PackGrow 10
     
     return vb
