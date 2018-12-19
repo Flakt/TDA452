@@ -11,10 +11,48 @@ bw = 6      -- board width
 q = bw - 1  -- max board index
 
 -- | The entire game state, including players
-data Game = Game {players :: [Player], board :: Board, deck :: [Tile], currPlayer :: Player}
+data Game = Game {players :: [Player],
+                  board :: Board, 
+                  deck :: [Tile], 
+                  currPlayer :: Player}
+                    deriving (Show)
 
+-- | A player, represented by an id, a hand (which is a list of tiles)
+-- and a starting position. The starting position can be used to derive
+-- the current position using movePlayer
+data Player = Player {playerId :: Int, 
+                      hand :: [Tile], 
+                      start :: PiecePos}
+                        deriving (Show, Eq)
+
+-- | The board, a list of rows of tiles, standard size is 6x6
+newtype Board = Board {tiles :: [[Maybe Tile]]}
+
+-- | A single tile, which is represented by a list of connections
+newtype Tile = Tile {conn :: [Connection]}
+                        deriving (Eq, Show, Read)
+
+{-  Connections are internal within the Tile.
+    Below is a representation of how the Links are indexed
+    Rotating a tile is done by transposing its connections
+
+     01
+    7XX2
+    6XX3
+     54
+-}
+type Connection = (Link, Link)
+type Link = Int
+type PiecePos = (Pos, Link)
+type Hand = [Tile]
+type Pos = (Int, Int)
+
+-- | Generates a new game using a std gen and a list of starting positions
+-- Creates a player for each supplied starting position (up to 8)
 gameNew :: StdGen -> [PiecePos] -> (Game, StdGen)
-gameNew gen startPos = (Game players' boardNew deck' (head players'), gen')
+gameNew gen startPos
+    | length startPos > 8 = error "gameNew : too many players"
+    | otherwise = (Game players' boardNew deck' (head players'), gen')
     where
         players' = playersNew startPos
         (deck',gen') = shuffle gen deck  
@@ -56,14 +94,13 @@ tile' [a,b,c,d,e,f,g,h] = Tile [(a,b),(c,d),(e,f),(g,h)]
 toList :: Tile -> [Link]
 toList (Tile [(a,b),(c,d),(e,f),(g,h)]) = [a,b,c,d,e,f,g,h]
 
--- | The board, a list of rows of tiles, standard size is 6x6
-newtype Board = Board {tiles :: [[Maybe Tile]]}
-boardNew = Board (replicate bw (replicate bw Nothing))
 instance Show Board where
     show b = concat lines
         where
             lines = map ((++ "\n") . f) (tiles b)
             f = concatMap (maybe "." (const "T"))
+
+boardNew = Board (replicate bw (replicate bw Nothing))
 
 -- | Fills a board with a list of tiles, from top left to bottom right
 boardFromDeck :: [Tile] -> Board
@@ -75,10 +112,6 @@ boardFromDeck deck = Board $ chunksOf 6 ts'
 -- Updates the board by placing the tile on the given position
 updateBoard :: Board -> Pos -> Tile -> Board
 updateBoard b p t = Board (updateTile (tiles b) p t)
-
--- | A single tile, which is represented by a list of connections
-newtype Tile = Tile {conn :: [Connection]}
-    deriving (Eq, Show, Read)
 
 -- | Returns a new tile
 tileNew :: StdGen -> (Tile, StdGen)
@@ -105,26 +138,6 @@ shuffle' gen old new = shuffle' gen' (delete toAdd old) (toAdd : new)
 drawNTiles :: Int -> [Tile] -> ([Tile], [Tile])
 drawNTiles = splitAt
 
-{-  Connections are internal within the Tile.
-    Below is a representation of how the Links are indexed
-    Rotating a tile is done by transposing its connections
-
-     01
-    7XX2
-    6XX3
-     54
--}
-type Connection = (Link, Link)
-type Link = Int
-
--- | A player, represented by an id, a hand (which is a list of tiles)
--- and a starting position. The starting position can be used to derive
--- the current position using movePlayer
-data Player = Player {playerId :: Int, hand :: [Tile], start :: PiecePos}
-                      deriving (Show, Eq)
-
-type PiecePos = (Pos, Link)
-
 -- | Given a list of starting positions, returns a list of new players
 playersNew :: [PiecePos] -> [Player]
 playersNew []     = []
@@ -132,25 +145,32 @@ playersNew (x:xs) = playersNew xs ++ [Player n [] x]
     where n = length xs
 
 -- | Checks if a player is dead on a given board state
--- TODO @fan fix this shit yo
-playerIsGameOver :: Game -> Player -> Bool
-playerIsGameOver g p = collision (players g) p || outOfBounds (pos p)
+-- tests this by seeing if the player reaches an edge that isnt starting pos
+playerIsGameOver :: Board -> Player -> Bool
+playerIsGameOver b p = 
+    onEdge piecePoint && piecePoint /= start p
+        where 
+            piecePoint = movePlayer b (start p) 
 
--- | Checks if a player would collide with an another player
-collision :: [Player] -> Player -> Bool
-collision ps p = map f positions
-    where
-      f x       = x == pos p
-      positions = foldr pos [] ps
+onEdge :: PiecePos -> Bool
+onEdge ((x,y), l) =
+    (x == 0 && (l == 6 || l == 7)) || -- on left edge
+    (x == q && (l == 2 || l == 3)) || -- on right edge
+    (y == 0 && (l == 0 || l == 1)) || -- on upper edge
+    (y == q && (l == 4 || l == 5))    -- on bottom edge
 
--- | Checks if a position would be out of bounds
-outOfBounds :: Pos -> Bool
-outOfBounds (x,y) = (x < 0 || x > 6) && (y < 0 || y > 6)
+---- | Checks if a player would collide with an another player
+--collision :: [Player] -> Player -> Bool
+--collision ps p = map f positions
+--    where
+--      f x       = x == pos p
+--      positions = foldr pos [] ps
+--
+---- | Checks if a position would be out of bounds
+--outOfBounds :: Pos -> Bool
+--outOfBounds (x,y) = (x < 0 || x > 6) && (y < 0 || y > 6)
 
 
-type Hand = [Tile]
-
-type Pos = (Int, Int)
 
 -- | Simulates the movement of a player piece (moves it forward until it
 -- reaches a bare connection or collides with an another player) and returns
@@ -197,9 +217,7 @@ mapLinks l | odd  l = (l + 3) `mod` 8
 
 -- | Returns Just the next tile to travel to, or Nothing
 nextTile :: Board -> Pos -> Link -> Maybe Tile
-nextTile b p l = b @@ p'
-    where
-        p' = p +++ linkOffs l
+nextTile b p l = b @@ (p +++ linkOffs l)
 
 -- | Returns the tile, or Nothing
 -- Will throw index errors if given bad pos
@@ -249,6 +267,7 @@ rotateTile t n
 
 -- | Normalizes a tile such that all connections have their lowest link first
 -- and that the list of connections is sorted on the first link in each conn
+-- used to easily map to a image file in IO
 normalize :: Tile -> Tile
 normalize t = Tile newConn
     where
