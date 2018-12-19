@@ -187,11 +187,13 @@ adjacentPos (a,b) = zip [  a,a+1,  a,a-1]
 (+++) :: Pos -> Pos -> Pos
 (+++) (a,b) (c,d) = (a+c,b+d)
 
--- | Rotates a tile (by rotating its connections) by 90 deg
-rotateTile :: Tile -> Tile
-rotateTile t = Tile (map transposeConn (conn t))
+-- | Rotates a tile (by rotating its connections) by 90 deg clockwise n times
+rotateTile :: Tile -> Int -> Tile
+rotateTile t n  
+    | n < 0     = rotateTile t (4+n)
+    | otherwise = Tile (map transposeConn (conn t))
     where transposeConn (a,b) = (transposeLink a,transposeLink b)
-          transposeLink x = (x +2) `mod` 8
+          transposeLink x = (x +(2 * n)) `mod` 8
 
 -- | Normalizes a tile such that all connections have their lowest link first
 -- and that the list of connections is sorted on the first link in each conn

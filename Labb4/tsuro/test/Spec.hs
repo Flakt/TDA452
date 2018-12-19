@@ -14,14 +14,16 @@ import System.Random
 main :: IO ()
 main = hspec $ describe "tsuro" $ do
 --    prop "updateTile"   $ prop_updateTile
-    prop "tileNew : conn"       prop_tileNew_conn
-    prop "adjacentPos : dist"   prop_adjacentPos_distance
-    prop "adjacentPos : uniq"   prop_adjacentPos_uniqueness
-    prop "mapLinks"             prop_mapLinks
-    prop "normalize"            prop_normalize
-    prop "deckNew : norm"       prop_deckNew_normalized
-    prop "deckNew : uniq"       prop_deckNew_uniqueness
-    prop "shuffle"              prop_shuffle
+    prop "tileNew : connections"    prop_tileNew_conn
+    prop "adjacentPos : distance"   prop_adjacentPos_distance
+    prop "adjacentPos : uniqueness" prop_adjacentPos_uniqueness
+    prop "mapLinks"                 prop_mapLinks
+    prop "normalize"                prop_normalize
+    prop "deckNew : normalized"     prop_deckNew_normalized
+    prop "deckNew : uniqeness"      prop_deckNew_uniqueness
+    prop "shuffle"                  prop_shuffle
+    prop "rotateTile : identity"    prop_rotateTile_identity
+    prop "rotateTile : reverse"     prop_rotateTile_reverse
 
 instance Arbitrary Tile where
      arbitrary = do
@@ -33,6 +35,14 @@ tile :: Gen Tile
 tile = arbitrary
 
 --------------------------------------------------------------
+
+-- tests that 4 rotations results in the original tile
+prop_rotateTile_identity :: Tile -> Result
+prop_rotateTile_identity t = rotateTile t 4 ?== t
+
+-- tests that rotating forward then backward results in the original tile
+prop_rotateTile_reverse :: Tile -> Int -> Result
+prop_rotateTile_reverse t n = rotateTile (rotateTile t n) (-n) ?== t
 
 prop_shuffle :: [Int] -> Int -> Result
 prop_shuffle list seed = list ==? (list `intersect` list')
