@@ -27,6 +27,7 @@ dependencies:
 - random
 - gtk3
 - unix
+- split
 
 library:
   source-dirs: src

@@ -1,5 +1,6 @@
 module Tsuro where
 import Data.List
+import Data.List.Split
 import Data.Maybe
 import System.Random
 
@@ -38,6 +39,13 @@ instance Show Board where
             lines = map ((++ "\n") . f) (tiles b)
             f = concatMap (maybe "." (const "T"))
 
+-- | Fills a board with a list of tiles, from top left to bottom right
+boardFromDeck :: [Tile] -> Board
+boardFromDeck deck = Board $ chunksOf 6 ts'
+    where
+        ts' = ts ++ replicate (36 - length ts) Nothing -- adds blanks to end
+        ts = map Just deck              
+        
 -- Updates the board by placing the tile on the given position
 (@@=) :: Board -> Pos -> Tile -> Board
 (@@=) b p t = Board (updateTile (tiles b) p t)
