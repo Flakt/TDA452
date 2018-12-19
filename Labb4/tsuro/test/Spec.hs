@@ -14,16 +14,17 @@ import System.Random
 main :: IO ()
 main = hspec $ describe "tsuro" $ do
 --    prop "updateTile"   $ prop_updateTile
-    prop "tileNew : connections"    prop_tileNew_conn
-    prop "adjacentPos : distance"   prop_adjacentPos_distance
-    prop "adjacentPos : uniqueness" prop_adjacentPos_uniqueness
-    prop "mapLinks"                 prop_mapLinks
-    prop "normalize"                prop_normalize
-    prop "deckNew : normalized"     prop_deckNew_normalized
-    prop "deckNew : uniqeness"      prop_deckNew_uniqueness
-    prop "shuffle"                  prop_shuffle
-    prop "rotateTile : identity"    prop_rotateTile_identity
-    prop "rotateTile : reverse"     prop_rotateTile_reverse
+    prop "tileNew : connections"        prop_tileNew_conn
+    prop "adjacentPos : distance"       prop_adjacentPos_distance
+    prop "adjacentPos : uniqueness"     prop_adjacentPos_uniqueness
+    prop "mapLinks"                     prop_mapLinks
+    prop "normalize"                    prop_normalize
+    prop "deckNew : normalized"         prop_deckNew_normalized
+    prop "deckNew : uniqeness"          prop_deckNew_uniqueness
+    prop "shuffle"                      prop_shuffle
+    prop "rotateTile : identity"        prop_rotateTile_identity
+    prop "rotateTile : reverse"         prop_rotateTile_reverse
+    prop "randomEdgePosistions : uniq"  prop_randomEdgePositions_unique
 
 instance Arbitrary Tile where
      arbitrary = do
@@ -35,6 +36,15 @@ tile :: Gen Tile
 tile = arbitrary
 
 --------------------------------------------------------------
+
+prop_randomEdgePositions_unique :: Int -> Result
+prop_randomEdgePositions_unique sd = res ==? (res `intersect` nub res) 
+        where (res,_) = randomEdgePositions (mkStdGen sd) 8 
+
+---- tests that all generated points are on the edge
+--prop_randomEdgePos_isOnEdge :: Int -> Result
+--prop_randomEdgePos_isOnEdge sd = True ==? (x == -1 || y == -1 || x == bw || y == bw)
+--        where (x,y) = fst (randomEdgePos (mkStdGen sd))
 
 -- tests that 4 rotations results in the original tile
 prop_rotateTile_identity :: Tile -> Result

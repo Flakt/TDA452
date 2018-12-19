@@ -47,16 +47,51 @@ type PiecePos = (Pos, Link)
 type Hand = [Tile]
 type Pos = (Int, Int)
 
--- | Generates a new game using a std gen and a list of starting positions
--- Creates a player for each supplied starting position (up to 8)
-gameNew :: StdGen -> [PiecePos] -> (Game, StdGen)
-gameNew gen startPos
-    | length startPos > 8 = error "gameNew : too many players"
-    | otherwise = (Game players' boardNew deck' (Just (head players')), gen')
+-- | Generates a new game using a std gen and number of players (max. 8)
+gameNew :: StdGen -> Int -> (Game, StdGen)
+gameNew gen n
+    | n > 8 = error "gameNew : too many players"
+    | otherwise = (Game players' boardNew deck' (Just (head players')), gen'')
     where
-        players' = playersNew startPos
-        (deck',gen') = shuffle gen deck  
-        deck = deckNew
+        (players',deck') = foldr drawForAll ([], deck) players 
+        
+        players = playersNew positions
+        (positions,gen'') = randomEdgePositions gen' n
+        (deck,gen') = shuffle gen deckNew
+
+-- helper for fold
+drawForAll :: Player -> ([Player], [Tile]) -> ([Player],[Tile])
+drawForAll plr (ls, d) = (plr{hand = drawn} : ls, rem)
+    where (drawn, rem) = drawNTiles 3 d
+
+-- | Generates n random unique starting points
+randomEdgePositions :: StdGen -> Int -> ([PiecePos],StdGen)
+randomEdgePositions gen n = if allDifferent res     -- test uniqueness
+                            then (res,gen') 
+                            else randomEdgePositions gen' n
+    where (res,gen') = randomEdgePositions' gen n
+
+randomEdgePositions' :: StdGen -> Int -> ([PiecePos],StdGen)
+randomEdgePositions' gen 0 = ([],gen)
+randomEdgePositions' gen n = (pos : childVal,childGen)
+    where 
+        (childVal, childGen)     = randomEdgePositions' gen' (n-1)
+        (pos, gen') = randomEdgePos gen
+
+-- | Generates a random starting point
+randomEdgePos :: StdGen -> (PiecePos, StdGen)
+randomEdgePos gen = (pos, gen')
+    where
+        pos = numToStartPos n
+        (n, gen') = randomR (0,bw*8 - 1) gen
+
+-- | Magical function that converts an integer to a PiecePos
+numToStartPos :: Int -> PiecePos
+numToStartPos v 
+    | v `elem` [bw*0 .. bw*2-1] = ((    (v - bw*0) `div` 2, -1), 4 + v `mod` 2)
+    | v `elem` [bw*2 .. bw*4-1] = ((bw, (v - bw*2) `div` 2    ), 6 + v `mod` 2)
+    | v `elem` [bw*4 .. bw*6-1] = ((    (v - bw*4) `div` 2, bw), 0 + v `mod` 2)
+    | v `elem` [bw*6 .. bw*8-1] = ((-1, (v - bw*6) `div` 2    ), 2 + v `mod` 2)
 
 -- | Places the tile in the current position (i.e. in front of the active player)
 -- returning a new state which has updated
@@ -67,7 +102,7 @@ gameMakeMove :: Game -> Tile -> Game
 gameMakeMove game tile = 
     game{players = players', board = board', currPlayer = nextPlayer}
     where
-        players'    = undefined
+        players'    = map (\x -> if x == p then p' else x) (players game)
         board'      = updateBoard b nextPos tile
         nextPlayer  = getNextPlayer b p (players game)
 
@@ -153,10 +188,8 @@ playersNew (x:xs) = playersNew xs ++ [Player n [] x]
 -- | Checks if a player is dead on a given board state
 -- tests this by seeing if the player reaches an edge that isnt starting pos
 playerIsGameOver :: Board -> Player -> Bool
-playerIsGameOver b p = 
-    onEdge piecePoint && piecePoint /= start p
-        where 
-            piecePoint = movePlayer b (start p) 
+playerIsGameOver b p = onEdge piecePoint && piecePoint /= start p
+        where piecePoint = movePlayer b (start p) 
 
 onEdge :: PiecePos -> Bool
 onEdge ((x,y), l) =
@@ -257,6 +290,12 @@ rotateTile t n
     | otherwise = Tile (map transposeConn (conn t))
     where transposeConn (a,b) = (transposeLink a,transposeLink b)
           transposeLink x = (x +(2 * n)) `mod` 8
+
+-- | Returns true if all elements in the given list are unique
+allDifferent :: (Eq a) => [a] -> Bool
+allDifferent list = case list of
+    []      -> True
+    (x:xs)  -> x `notElem` xs && allDifferent xs
 
 -- | Normalizes a tile such that all connections have their lowest link first
 -- and that the list of connections is sorted on the first link in each conn

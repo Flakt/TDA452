@@ -19,7 +19,11 @@ main = do
     set window [ windowTitle         := "Tsuro"
                , windowResizable     := False]
     
-    let game = sampleGame 
+    metaVBox <- vBoxNew
+    buttonBox <- hBoxNew
+
+    gen <- getStdGen
+    let (game, _) = gameNew gen 4 
 
     gameBox <- displayState game
 
@@ -33,7 +37,10 @@ main = do
 
     overlayImage img2 img1
 
-    containerAdd window gameBox
+    containerAdd metaVBox gameBox
+    containerAdd metaVBox buttonBox
+
+    containerAdd window metaVBox
 
     -- TODO make vbox containing game window?
 
