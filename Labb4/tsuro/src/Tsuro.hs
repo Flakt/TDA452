@@ -73,7 +73,7 @@ gameMakeMove game gen tile = (game {players = players', board = board',
         nextPlayer  = undefined
 
         nextPos = pos +++ linkOffs link
-        (pos, link) = movePlayer b (start p)   -- TODO get the next tile instead
+        (pos, link) = movePlayer b (start p)
         
         b = board game
 
@@ -158,19 +158,6 @@ onEdge ((x,y), l) =
     (x == q && (l == 2 || l == 3)) || -- on right edge
     (y == 0 && (l == 0 || l == 1)) || -- on upper edge
     (y == q && (l == 4 || l == 5))    -- on bottom edge
-
----- | Checks if a player would collide with an another player
---collision :: [Player] -> Player -> Bool
---collision ps p = map f positions
---    where
---      f x       = x == pos p
---      positions = foldr pos [] ps
---
----- | Checks if a position would be out of bounds
---outOfBounds :: Pos -> Bool
---outOfBounds (x,y) = (x < 0 || x > 6) && (y < 0 || y > 6)
-
-
 
 -- | Simulates the movement of a player piece (moves it forward until it
 -- reaches a bare connection or collides with an another player) and returns
