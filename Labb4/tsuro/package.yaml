@@ -26,8 +26,9 @@ dependencies:
 - quickcheck-assertions
 - random
 - gtk3
-- unix
+# - unix
 - split
+- directory
 
 library:
   source-dirs: src

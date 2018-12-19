@@ -2,13 +2,15 @@ module Main where
 
 import Tsuro
 
+
+import Data.Maybe
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.IORef
 import Graphics.UI.Gtk hiding (Action)
 import Graphics.UI.Gtk.Layout.Grid
-import System.Posix.User
-
+import System.Directory
+import System.Random
 
 main :: IO ()
 main = do
@@ -19,7 +21,8 @@ main = do
                , windowDefaultWidth  := 640
                , windowDefaultHeight := 640 ]
     
-    let board = boardFromDeck deckNew
+    let (deck,_) = shuffle (mkStdGen 123123) deckNew
+    let board = boardFromDeck deck
     grid <- displayBoard board 
 
     containerAdd window grid
@@ -52,25 +55,37 @@ displayBoard b = do
 -- | Attaches a tile to a grid
 attachTile :: Grid -> (Maybe Tile, Pos) -> IO ()
 attachTile grid (tile, (x,y)) = do
-    img <- tileToImg tile 
+    img <- tileToImage tile 
     gridAttach grid img x y 1 1    
 
-tileToImg :: Maybe Tile -> IO Image
-tileToImg tile = do
-    let tile' = if tile `elem` newDeck 
+
+tileToImage :: Maybe Tile -> IO Image
+tileToImage Nothing = do
+    fp <- tileToFilepath Nothing
+    imageNewFromFile fp
+tileToImage tile = do
+    let tile' = if fromJust tile `elem` deckNew 
                 then tile
                 else undefined -- TODO rotate until it is in newDeck?
+    -- TODO image, once acquired can be rotated by converting to pixbuf and back
+    -- alternativley, use pixbufNewFromFile
     fp <- tileToFilepath tile'
     imageNewFromFile fp
 
 -- | Given an normalized [Connection] as string, returns the expected filepath
 tileToFilepath :: Maybe Tile -> IO String
 tileToFilepath tile = do
-    userEntry <- getRealUserID >>= getUserEntryForID
-    let home = homeDirectory userEntry
+    root <- getCurrentDirectory
     let id = maybe "blank" (filter (/=',') . dropFirstAndLast . show . toList . normalize) tile
-    return (home ++ "/Pictures/tsuro-tiles/" ++ 
+    return (root ++ "/assets/" ++ 
             id ++ ".png")
+
+-- | Rotates an image by 90 deg clockwise
+rotateImage :: Image -> IO Image
+rotateImage img = do
+    pb <- imageGetPixbuf img
+    pbrot <- pixbufRotateSimple pb PixbufRotateClockwise
+    imageNewFromPixbuf pbrot
 
 dropFirstAndLast :: String -> String
 dropFirstAndLast s = drop 1 $ take (-1 + length s) s

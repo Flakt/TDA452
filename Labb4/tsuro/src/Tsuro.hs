@@ -1,5 +1,4 @@
 module Tsuro where
-import Tsuro.Default
 import Data.List
 import Data.List.Split
 import Data.Maybe
