@@ -19,7 +19,7 @@ main = do
                , windowDefaultWidth  := 640
                , windowDefaultHeight := 640 ]
     
-    let board = boardNew @@= (0,0) $ tile' [0,1,2,3,4,5,6,7]
+    let board = boardFromDeck deckNew
     grid <- displayBoard board 
 
     containerAdd window grid
@@ -57,10 +57,13 @@ attachTile grid (tile, (x,y)) = do
 
 tileToImg :: Maybe Tile -> IO Image
 tileToImg tile = do
-    fp <- tileToFilepath tile
+    let tile' = if tile `elem` newDeck 
+                then tile
+                else undefined -- TODO rotate until it is in newDeck?
+    fp <- tileToFilepath tile'
     imageNewFromFile fp
 
--- | Given an normalized [Connection] as string
+-- | Given an normalized [Connection] as string, returns the expected filepath
 tileToFilepath :: Maybe Tile -> IO String
 tileToFilepath tile = do
     userEntry <- getRealUserID >>= getUserEntryForID

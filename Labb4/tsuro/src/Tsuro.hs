@@ -1,4 +1,5 @@
 module Tsuro where
+import Tsuro.Default
 import Data.List
 import Data.List.Split
 import Data.Maybe
@@ -60,6 +61,10 @@ tileNew gen = (tile' ls, gen')
     where
         (ls, gen') = shuffle gen [0..7]
         
+-- | Returns a new deck of tiles (always the same order)
+deckNew :: [Tile]
+deckNew = defaultDeck
+
 -- | Shuffles a list
 shuffle :: Eq a => StdGen -> [a] -> ([a], StdGen)
 shuffle gen ls = shuffle' gen ls []
@@ -197,10 +202,8 @@ normalize t = Tile newConn
         newConn = sortOn fst $
                   map (\(a,b) -> if a < b then (a,b) else (b,a)) (conn t)
 
--- | Returns a new deck of tiles (always the same order)P
-deckNew :: [Tile]
-deckNew = 
-    -- 1
+defaultDeck :: [Tile]
+defaultDeck =     -- 1
     [ tile' [0,1,2,3,4,5,6,7] -- ok 
     , tile' [0,7,1,4,2,5,3,6] -- ok
     , tile' [0,6,1,7,2,5,3,4] -- ok
@@ -213,7 +216,7 @@ deckNew =
     , tile' [0,7,1,6,2,3,4,5] -- ok
     , tile' [0,7,1,3,2,4,5,6] -- ok
     , tile' [0,2,1,5,3,4,6,7] -- ok
-    , tile' [0,3,1,4,2,6,4,7] -- ok
+    , tile' [0,3,1,4,2,6,5,7] -- ok
     -- 3
     , tile' [0,1,2,7,3,5,4,6] -- ok 
     , tile' [0,4,1,7,2,6,3,5] -- ok
@@ -239,6 +242,6 @@ deckNew =
     , tile' [0,6,1,5,2,7,3,4] -- ok 
     , tile' [0,5,1,6,2,4,3,7] -- ok
     , tile' [0,2,1,6,3,4,5,7] -- ok
-    , tile' [0,5,1,4,3,6,4,7] -- ok
+    , tile' [0,5,1,4,2,6,3,7] -- ok
     , tile' [0,4,1,3,2,7,5,6] -- ok
     ]
