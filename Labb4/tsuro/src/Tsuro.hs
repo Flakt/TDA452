@@ -11,26 +11,43 @@ bw = 6      -- board width
 q = bw - 1  -- max board index
 
 -- | The entire game state, including players
-data Game = Game {players :: [Player], board :: Board, deck :: [Tile], turnNum :: Int}
+data Game = Game {players :: [Player], board :: Board, deck :: [Tile], currPlayer :: Player}
 
 gameNew :: StdGen -> [PiecePos] -> (Game, StdGen)
-gameNew gen startPos = (Game players boardNew deck' 0, gen')
+gameNew gen startPos = (Game players' boardNew deck' (head players'), gen')
     where
-        players = playersNew startPos
+        players' = playersNew startPos
         (deck',gen') = shuffle gen deck  
         deck = deckNew
 
-gameMakeMove :: StdGen -> Tile -> (Game, StdGen)
-gameMakeMove = undefined -- TODO
+-- | Places the tile in the current position (i.e. in front of the active player)
+-- returning a new state which has updated
+--      - the board (added the new tile)
+--      - the current player's hand (removed played tile and drawn new)
+--      - the deck (drawn from)
+gameMakeMove :: Game -> StdGen -> Tile -> (Game, StdGen)
+gameMakeMove game gen tile = (game {players = players', board = board', 
+                                    currPlayer = nextPlayer},           gen')
+    where
+        gen'        = undefined
+        players'    = undefined
+        board'      = updateBoard b nextPos tile
+        nextPlayer  = undefined
+
+        nextPos = pos +++ linkOffs link
+        (pos, link) = movePlayer b (start p)   -- TODO get the next tile instead
+        
+        b = board game
+
+        p' = p {hand = hand'}
+            where hand' = hand p \\ [tile]
+        p = currPlayer game
 
 sampleGame :: Game
-sampleGame = Game ps (boardFromDeck rem) [] 0
+sampleGame = Game ps (boardFromDeck rem) [] (head ps)
     where
         ps = [Player 0 h ((0,0),0)]
         (h,rem) = drawNTiles 2 deckNew
-
-currentPlayer :: Game -> Player
-currentPlayer game = head (players game) -- TODO make so it uses turnNum
 
 -- | Construct a tile from a list of links
 tile' :: [Link] -> Tile
@@ -125,7 +142,7 @@ type Pos = (Int, Int)
 -- | Simulates the movement of a player piece (moves it forward until it 
 -- reaches a bare connection or collides with an another player) and returns 
 -- the final position, tile and connection
-movePlayer :: Board -> PiecePos -> (Pos, Link)
+movePlayer :: Board -> PiecePos -> PiecePos
 movePlayer b (pos, exitLink) 
     | isOutside newPos  = (pos, exitLink)   -- cant move to next, because it is OOB
     | isNothing newTile = (pos, exitLink)   -- cant move to next because it is empty
