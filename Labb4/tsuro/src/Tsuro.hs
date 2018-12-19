@@ -173,6 +173,7 @@ deckNew :: [Tile]
 deckNew = defaultDeck
 
 -- | Shuffles a list
+-- stolen from our own blackjack project
 shuffle :: Eq a => StdGen -> [a] -> ([a], StdGen)
 shuffle gen ls = shuffle' gen ls []
 
@@ -300,6 +301,7 @@ rotateTile t n
           transposeLink x = (x +(2 * n)) `mod` 8
 
 -- | Returns true if all elements in the given list are unique
+-- stolen from stackoverflow
 allDifferent :: (Eq a) => [a] -> Bool
 allDifferent list = case list of
     []      -> True
