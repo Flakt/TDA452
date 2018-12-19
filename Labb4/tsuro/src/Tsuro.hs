@@ -12,35 +12,41 @@ q = bw - 1  -- max board index
 -- | The entire game state, including players
 data Game = Game {players :: [Player], board :: Board, deck :: [Tile], turnNum :: Int}
 
-gameNew :: StdGen -> (Game, StdGen)
-gameNew gen = (Game players boardNew deck' 0, gen')
+gameNew :: StdGen -> [StartPos] -> (Game, StdGen)
+gameNew gen startPos = (Game players boardNew deck' 0, gen')
     where
-        gen' = undefined -- TODO
-        deck' = undefined -- TODO
-        players = []
+        players = playersNew startPos
+        (deck',gen') = shuffle gen deck  
         deck = deckNew
 
--- | Returns a new deck of tiles (always the same order)
+gameMakeMove :: StdGen -> Tile -> (Game, StdGen)
+gameMakeMove = undefined -- TODO
 
 -- | Construct a tile from a list of links
 tile' :: [Link] -> Tile
 tile' [a,b,c,d,e,f,g,h] = Tile [(a,b),(c,d),(e,f),(g,h)]
 
+toList :: Tile -> [Link]
+toList (Tile [(a,b),(c,d),(e,f),(g,h)]) = [a,b,c,d,e,f,g,h]
 
 -- | The board, a list of rows of tiles, standard size is 6x6
-data Board = Board {tiles :: [[Maybe Tile]]}
+newtype Board = Board {tiles :: [[Maybe Tile]]}
 boardNew = Board (replicate bw (replicate bw Nothing))
 instance Show Board where
     show b = concat lines
         where 
-            lines = map (++"\n") $ map f (tiles b)
-            f = concatMap (maybe "." (\x -> "T"))
+            lines = map ((++ "\n") . f) (tiles b)
+            f = concatMap (maybe "." (const "T"))
 
--- | A single tile, which
+-- Updates the board by placing the tile on the given position
+(@@=) :: Board -> Pos -> Tile -> Board
+(@@=) b p t = Board (updateTile (tiles b) p t)
+
+-- | A single tile, which is represented by a list of connections
 newtype Tile = Tile {conn :: [Connection]}
     deriving (Eq, Show, Read)
 
--- | Given a stdgen, returns a new tile (and the next stdgen)
+-- | Returns a new tile
 tileNew :: StdGen -> (Tile, StdGen)
 tileNew gen = (tile' ls, gen') 
     where
@@ -55,16 +61,13 @@ shuffle' gen  [] new = (new, gen)
 shuffle' gen old new = shuffle' gen' (delete toAdd old) (toAdd : new)
     where
         toAdd = old !! v    
-        (v, gen') = randomR (0, (length old) + (-1)) gen
+        (v, gen') = randomR (0, length old + (-1)) gen
 
+-- | Draws n cards from a deck, returning the drewn card and the remainder
+drawNTiles :: Int -> [Tile] -> ([Tile], [Tile])  
+drawNTiles = splitAt
 
--- | Given a deck and a number, draws that many tiles from the deck,
--- returning a tuple; respectively the new deck and the drawn tiles
-drawTiles :: [Tile] -> Int -> ([Tile], [Tile])  
-drawTiles deck n = undefined -- TODO
-
-
-{-  Connections are internal within the Tile
+{-  Connections are internal within the Tile.
     Below is a representation of how the Links are indexed
     Rotating a tile is done by transposing its connections
 
@@ -77,28 +80,34 @@ type Connection = (Link, Link)
 type Link = Int
 
 -- | A player, represented by an id, a hand (which is a list of tiles)
--- and a starting position
-data Player = Player {playerId :: ID, hand :: [Tile], pos :: Pos,
-                      link :: Link}
+-- and a starting position. The starting position can be used to derive
+-- the current position using movePlayer
+data Player = Player {playerId :: Int, hand :: [Tile], start :: StartPos}
                       deriving (Show, Eq)
-type ID = Int
 
--- A list of tiles (strictly speaking it is unordered)
+type StartPos = (Pos, Link)
+
+-- | Given a list of starting positions, returns a list of new players
+playersNew :: [StartPos] -> [Player]
+playersNew []     = []
+playersNew (x:xs) = playersNew xs ++ [Player n [] x]
+    where n = length xs
+
+-- | Checks if a player is dead on a given board state
+playerIsGameOver :: Board -> Player -> Bool
+playerIsGameOver b p = undefined -- TODO @fan fix this shit yo
+
 type Hand = [Tile]
 
 type Pos = (Int, Int)
 
--- Updates the board by placing the tile on the given position
-updateBoard :: Board -> Pos -> Tile -> Board
-updateBoard b p t = Board (updateTile (tiles b) p t)
-
 -- | Simulates the movement of a player piece (moves it forward until it 
 -- reaches a bare connection or collides with an another player) and returns 
 -- the final position, tile and connection
-movePlayer :: Board -> Pos -> Link -> (Pos, Maybe Tile, Connection)
-movePlayer b p l | isOutside newPos = (newPos, tile, connection)
-                 | isNothing tile   = (newPos, tile, connection)
-                 | otherwise        =  movePlayer b newPos newLink
+movePlayer :: Board -> StartPos -> (Pos, Maybe Tile, Connection)
+movePlayer b (p,l) | isOutside newPos = (newPos, tile, connection)
+                   | isNothing tile   = (newPos, tile, connection)
+                   | otherwise        =  movePlayer b (newPos, newLink)
     where
       tile       = b @@ p
       connection = findConnection l (fromJust tile)
@@ -111,14 +120,14 @@ findConnection l t = fromJust(find f (conn t))
     where f (a, b) = a == target || b == target
           target   = mapLinks l
 
--- | Checks if a given pos is out of the game boundaries
+-- | Checks if a given position is out of the game boundaries
 isOutside :: Pos -> Bool
 isOutside pos = (x > bw || y > bw) || (x < 0 || y < 0)
     where
       x = fst pos
       y = snd pos
 
--- | Maps links with corresponding link of the other tile
+-- | Maps a link with the link it leads to when moving from a tile
 mapLinks :: Link -> Link
 mapLinks l | even l = (l + 5) `mod` 8
 mapLinks l | odd  l = (l + 3) `mod` 8
@@ -157,7 +166,7 @@ updateTile ts (x,y) new_tile
             y_max = length ts
 
 -- Given a position, returns all the "Manhattan"-adjacent tiles
--- * with respect to the edges of the board
+-- * with no respect to the edges of the board
 adjacentPos :: Pos -> [Pos]
 adjacentPos (a,b) = zip [  a,a+1,  a,a-1]
                         [b+1,  b,b-1,  b]
@@ -180,6 +189,7 @@ normalize t = Tile newConn
         newConn = sortOn fst $
                   map (\(a,b) -> if a < b then (a,b) else (b,a)) (conn t)
 
+-- | Returns a new deck of tiles (always the same order)P
 deckNew :: [Tile]
 deckNew = 
     -- 1
