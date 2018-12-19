@@ -17,15 +17,17 @@ main = do
     void initGUI
     window <- windowNew
     set window [ windowTitle         := "Calculator"
-               , windowResizable     := False
-               , windowDefaultWidth  := 640
-               , windowDefaultHeight := 640 ]
+               , windowResizable     := False]
     
-    let (deck,_) = shuffle (mkStdGen 123123) [normalize $ rotateTile (defaultDeck !! 5) 0]
-    let board = boardFromDeck deck
-    grid <- displayBoard board 
+    --let (deck,_) = shuffle (mkStdGen 123123) [normalize $ rotateTile (defaultDeck !! 5) 0]
+    --let board = boardFromDeck deck
+    --grid <- displayBoard board 
 
-    containerAdd window grid
+    let game = sampleGame 
+
+    gameBox <- displayState game
+
+    containerAdd window gameBox
 
     window `on` deleteEvent $ do
         liftIO mainQuit
@@ -39,18 +41,39 @@ main = do
 --   - the current player's hand
 --   - buttons to rotate or place
 displayState :: Game -> IO VBox
-displayState game = undefined -- TODO maybe shouldnt be used
+displayState game = do
 
-displayBoard :: Board -> IO Grid
+    -- add the board
+    vb <- vBoxNew False 10
+    boardGrid <- displayBoard (board game)
+    boxPackStart vb boardGrid PackNatural 0     
+
+    -- add the current player's hand
+    let currPlayer = currentPlayer game
+    handBox <- displayHand (hand currPlayer)
+    boxPackStart vb handBox PackGrow 10
+    
+    return vb
+
+displayHand :: [Tile] -> IO HBox
+displayHand hand = do
+    hb <- hBoxNew True 10
+    mapM_  (\t -> do
+        img <- tileToImage (Just t)
+        boxPackStart hb img PackNatural 0) hand
+    return hb
+
+displayBoard :: Board -> IO HBox
 displayBoard b = do
     let coords = [(x,y) | y <- [0..5], x <- [0..5]]
     let tiles' = zip (concat $ tiles b) coords
 
     grid <- gridNew
-
     mapM_ (attachTile grid) tiles' -- maybe works?
 
-    return grid
+    hb <- hBoxNew True 0
+    boxPackStart hb grid PackNatural 0
+    return hb
 
 -- | Attaches a tile to a grid
 attachTile :: Grid -> (Maybe Tile, Pos) -> IO ()
@@ -95,7 +118,6 @@ rotateImage img n
     | otherwise = do
         rotimg <- rotateImage' img
         rotateImage rotimg (n-1)
-
 
 rotateImage' :: Image -> IO Image
 rotateImage' img = do

@@ -23,6 +23,15 @@ gameNew gen startPos = (Game players boardNew deck' 0, gen')
 gameMakeMove :: StdGen -> Tile -> (Game, StdGen)
 gameMakeMove = undefined -- TODO
 
+sampleGame :: Game
+sampleGame = Game ps boardNew rem 0
+    where
+        ps = [Player 0 h ((0,0),0)]
+        (h,rem) = drawNTiles 2 deckNew
+
+currentPlayer :: Game -> Player
+currentPlayer game = head (players game) -- TODO make so it uses turnNum
+
 -- | Construct a tile from a list of links
 tile' :: [Link] -> Tile
 tile' [a,b,c,d,e,f,g,h] = Tile [(a,b),(c,d),(e,f),(g,h)]
