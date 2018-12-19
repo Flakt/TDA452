@@ -61,7 +61,7 @@ newtype Board = Board {tiles :: [[Maybe Tile]]}
 boardNew = Board (replicate bw (replicate bw Nothing))
 instance Show Board where
     show b = concat lines
-        where 
+        where
             lines = map ((++ "\n") . f) (tiles b)
             f = concatMap (maybe "." (const "T"))
 
@@ -70,8 +70,8 @@ boardFromDeck :: [Tile] -> Board
 boardFromDeck deck = Board $ chunksOf 6 ts'
     where
         ts' = ts ++ replicate (36 - length ts) Nothing -- adds blanks to end
-        ts = map Just deck              
-        
+        ts = map Just deck
+
 -- Updates the board by placing the tile on the given position
 updateBoard :: Board -> Pos -> Tile -> Board
 updateBoard b p t = Board (updateTile (tiles b) p t)
@@ -82,10 +82,10 @@ newtype Tile = Tile {conn :: [Connection]}
 
 -- | Returns a new tile
 tileNew :: StdGen -> (Tile, StdGen)
-tileNew gen = (tile' ls, gen') 
+tileNew gen = (tile' ls, gen')
     where
         (ls, gen') = shuffle gen [0..7]
-        
+
 -- | Returns a new deck of tiles (always the same order)
 deckNew :: [Tile]
 deckNew = defaultDeck
@@ -98,11 +98,11 @@ shuffle' :: Eq a => StdGen -> [a] -> [a] -> ([a], StdGen)
 shuffle' gen  [] new = (new, gen)
 shuffle' gen old new = shuffle' gen' (delete toAdd old) (toAdd : new)
     where
-        toAdd = old !! v    
+        toAdd = old !! v
         (v, gen') = randomR (0, length old + (-1)) gen
 
 -- | Draws n cards from a deck, returning the drewn card and the remainder
-drawNTiles :: Int -> [Tile] -> ([Tile], [Tile])  
+drawNTiles :: Int -> [Tile] -> ([Tile], [Tile])
 drawNTiles = splitAt
 
 {-  Connections are internal within the Tile.
@@ -132,15 +132,28 @@ playersNew (x:xs) = playersNew xs ++ [Player n [] x]
     where n = length xs
 
 -- | Checks if a player is dead on a given board state
-playerIsGameOver :: Board -> Player -> Bool
-playerIsGameOver b p = undefined -- TODO @fan fix this shit yo
+-- TODO @fan fix this shit yo
+playerIsGameOver :: Game -> Player -> Bool
+playerIsGameOver g p = collision (players g) p || outOfBounds (pos p)
+
+-- | Checks if a player would collide with an another player
+collision :: [Player] -> Player -> Bool
+collision ps p = map f positions
+    where
+      f x       = x == pos p
+      positions = foldr pos [] ps
+
+-- | Checks if a position would be out of bounds
+outOfBounds :: Pos -> Bool
+outOfBounds (x,y) = (x < 0 || x > 6) && (y < 0 || y > 6)
+
 
 type Hand = [Tile]
 
 type Pos = (Int, Int)
 
--- | Simulates the movement of a player piece (moves it forward until it 
--- reaches a bare connection or collides with an another player) and returns 
+-- | Simulates the movement of a player piece (moves it forward until it
+-- reaches a bare connection or collides with an another player) and returns
 -- the final position, tile and connection
 movePlayer :: Board -> PiecePos -> PiecePos
 movePlayer b (pos, exitLink) 
@@ -157,7 +170,7 @@ movePlayer b (pos, exitLink)
 findOtherLink :: Link -> Tile -> Link
 findOtherLink l t = other l $ head $ filter (\ (a, b) -> a == l || b == l) (conn t)
 
--- | Given a value and a tuple containing that value, 
+-- | Given a value and a tuple containing that value,
 -- returns the other value in the tuple
 other :: Eq a => a -> (a,a) -> a
 other x (a,b) | x == a    = b
@@ -181,7 +194,7 @@ isOutside pos = (x > bw || y > bw) || (x < 0 || y < 0)
 mapLinks :: Link -> Link
 mapLinks l | even l = (l + 5) `mod` 8
 mapLinks l | odd  l = (l + 3) `mod` 8
- 
+
 -- | Returns Just the next tile to travel to, or Nothing
 nextTile :: Board -> Pos -> Link -> Maybe Tile
 nextTile b p l = b @@ p'
@@ -204,7 +217,7 @@ linkOffs l  | l == 0 || l == 1 = ( 0,-1)
 -- Replaces a tile in a matrix of tiles with a given tile
 updateTile :: [[Maybe Tile]] -> Pos -> Tile -> [[Maybe Tile]]
 updateTile ts (x,y) new_tile
-    | x < 0 || x > x_max || y < 0 || y > y_max = error $ 
+    | x < 0 || x > x_max || y < 0 || y > y_max = error $
                         "updateTiles : pos " ++ show (x,y) ++ "out of bounds"
     | otherwise =                   upperRows ++
                     (leftTiles ++ Just new_tile : rightTiles) :
@@ -226,9 +239,9 @@ adjacentPos (a,b) = zip [  a,a+1,  a,a-1]
 (+++) (a,b) (c,d) = (a+c,b+d)
 
 -- | Rotates a tile (by rotating its connections) by 90 deg clockwise n times
--- negative values result in a counter clockwise rotation   
+-- negative values result in a counter clockwise rotation
 rotateTile :: Tile -> Int -> Tile
-rotateTile t n  
+rotateTile t n
     | n < 0     = rotateTile t (4+n)
     | otherwise = Tile (map transposeConn (conn t))
     where transposeConn (a,b) = (transposeLink a,transposeLink b)
@@ -238,13 +251,13 @@ rotateTile t n
 -- and that the list of connections is sorted on the first link in each conn
 normalize :: Tile -> Tile
 normalize t = Tile newConn
-    where 
+    where
         newConn = sortOn fst $
                   map (\(a,b) -> if a < b then (a,b) else (b,a)) (conn t)
 
 defaultDeck :: [Tile]
 defaultDeck =     -- 1
-    [ tile' [0,1,2,3,4,5,6,7] -- ok 
+    [ tile' [0,1,2,3,4,5,6,7] -- ok
     , tile' [0,7,1,4,2,5,3,6] -- ok
     , tile' [0,6,1,7,2,5,3,4] -- ok
     , tile' [0,2,1,3,4,5,6,7] -- ok
@@ -258,7 +271,7 @@ defaultDeck =     -- 1
     , tile' [0,2,1,5,3,4,6,7] -- ok
     , tile' [0,3,1,4,2,6,5,7] -- ok
     -- 3
-    , tile' [0,1,2,7,3,5,4,6] -- ok 
+    , tile' [0,1,2,7,3,5,4,6] -- ok
     , tile' [0,4,1,7,2,6,3,5] -- ok
     , tile' [0,2,1,4,3,5,6,7] -- ok
     , tile' [0,2,1,7,3,5,4,6] -- ok
@@ -272,14 +285,14 @@ defaultDeck =     -- 1
     , tile' [0,3,1,6,2,5,4,7] -- ok
     , tile' [0,1,2,7,3,6,4,5] -- ok
     -- 5
-    , tile' [0,5,1,7,2,4,3,6] -- ok 
+    , tile' [0,5,1,7,2,4,3,6] -- ok
     , tile' [0,7,1,2,3,4,5,6] -- ok
     , tile' [0,1,2,7,3,4,5,6] -- ok
     , tile' [0,3,1,2,4,7,5,6] -- ok
     , tile' [0,3,1,7,2,5,4,6] -- ok
     , tile' [0,7,1,3,2,6,4,5] -- ok
     -- 6
-    , tile' [0,6,1,5,2,7,3,4] -- ok 
+    , tile' [0,6,1,5,2,7,3,4] -- ok
     , tile' [0,5,1,6,2,4,3,7] -- ok
     , tile' [0,2,1,6,3,4,5,7] -- ok
     , tile' [0,5,1,4,2,6,3,7] -- ok
