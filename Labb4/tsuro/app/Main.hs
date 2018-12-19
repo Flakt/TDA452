@@ -64,10 +64,11 @@ tileToImage Nothing = do
     fp <- tileToFilepath Nothing
     imageNewFromFile fp
 tileToImage (Just tile) = do
-    let rotations = rotationsFromBase tile
-    let rotBackTile = rotateTile tile (-rotations)
-    
-    return undefined
+    let rotations = rotationsFromBase tile          -- get rotations
+    let rotBackTile = rotateTile tile (-rotations)  -- rotate backwards
+    fp <- tileToFilepath (Just rotBackTile)         -- get base image
+    img <- imageNewFromFile fp
+    rotateImage img rotations                       -- rotate forward again
 
 -- | Returns the number of 90 deg clockwise rotations from a base tile 
 rotationsFromBase :: Tile -> Int    
