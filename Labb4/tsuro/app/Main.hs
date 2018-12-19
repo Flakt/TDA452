@@ -23,15 +23,19 @@ main = do
 
     gameBox <- displayState game
 
-    -- root <- getCurrentDirectory
     -- test <- overlayNew
-    -- img1 <- imageNewFromFile $ root ++ "/assets/blank.png"
-    -- img2 <- imageNewFromFile $ root ++ "/assets/player0.png"
+    root <- getCurrentDirectory
+    img1 <- imageNewFromFile $ root ++ "/assets/blank.png"
+    img2 <- renderPiece 0 3
     -- overlayAdd test img1
     -- overlayAdd test img2
-    -- img1 <- playerToImage 0 2
+    -- img1 <- renderPiece 0 2
 
-    containerAdd window img1
+    overlayImage img2 img1
+
+    containerAdd window gameBox
+
+    -- TODO make vbox containing game window?
 
     window `on` deleteEvent $ do
         liftIO mainQuit
@@ -64,36 +68,45 @@ displayHand :: [Tile] -> IO HBox
 displayHand hand = do
     hb <- hBoxNew True 10
     mapM_  (\t -> do
-        img <- tileToImage (Just t)
+        img <- renderTile (Just t)
         boxPackStart hb img PackNatural 0) hand
     return hb
 
 -- | Renders a board as a grid of tiles with player pieces
-displayBoard :: Board -> [Player] ->IO HBox
+displayBoard :: Board -> [Player] -> IO HBox
 displayBoard b ps = do
     let coords = [(x,y) | y <- [0..5], x <- [0..5]]
     let tiles' = zip (concat $ tiles b) coords
+
+    let positions = undefined -- TODO map (\pl -> movePlayer pl -- should give [(id, pos, link)]
 
     grid <- gridNew
     gridSetRowHomogeneous grid True
     gridSetColumnHomogeneous grid True
     mapM_ (attachTile grid) tiles'
 
-    let positions = undefined -- TODO map (\pl -> movePlayer pl 
-
     hb <- hBoxNew True 0
     boxPackStart hb grid PackNatural 0
     return hb
 
+-- | overlays image a ontop of b
+overlayImage :: Image -> Image -> IO Image
+overlayImage a b = do
+    bufA <- imageGetPixbuf a
+    bufB <- imageGetPixbuf b
+    pixbufComposite bufA bufB 0 0 80 80 0 0 1 1 InterpNearest 255
+    imageNewFromPixbuf bufB
+
 -- | Attaches a overlay with an image to the grid
 attachTile :: Grid -> (Maybe Tile, Pos) -> IO ()
 attachTile grid (tile, (x,y)) = do
-    img <- tileToImage tile 
+    -- TODO overlay player
+    img <- renderTile tile 
     gridAttach grid img x y 1 1    
 
 -- | Renders a player's piece
-playerToImage :: Int -> Link -> IO Image -- TODO this can probably be improved
-playerToImage id l 
+renderPiece :: Int -> Link -> IO Image -- TODO this can probably be improved
+renderPiece id l 
     | odd l = do
         root    <- getCurrentDirectory
         img     <- imageNewFromFile $ root ++ "/assets/player" ++ show id ++ ".png" 
@@ -105,11 +118,11 @@ playerToImage id l
         rotateImage img (l `div` 2)
 
 -- | Renders a tile
-tileToImage :: Maybe Tile -> IO Image
-tileToImage Nothing = do
+renderTile :: Maybe Tile -> IO Image
+renderTile Nothing = do
     fp <- tileToFilepath Nothing
     imageNewFromFile fp
-tileToImage (Just tile) = do
+renderTile (Just tile) = do
     let rotations = rotationsFromBase tile          -- get rotations
     let rotBackTile = rotateTile tile (-rotations)  -- rotate backwards
     fp <- tileToFilepath (Just rotBackTile)         -- get base image

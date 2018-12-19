@@ -13,7 +13,7 @@ q = bw - 1  -- max board index
 -- | The entire game state, including players
 data Game = Game {players :: [Player], board :: Board, deck :: [Tile], turnNum :: Int}
 
-gameNew :: StdGen -> [StartPos] -> (Game, StdGen)
+gameNew :: StdGen -> [PiecePos] -> (Game, StdGen)
 gameNew gen startPos = (Game players boardNew deck' 0, gen')
     where
         players = playersNew startPos
@@ -24,7 +24,7 @@ gameMakeMove :: StdGen -> Tile -> (Game, StdGen)
 gameMakeMove = undefined -- TODO
 
 sampleGame :: Game
-sampleGame = Game ps boardNew rem 0
+sampleGame = Game ps (boardFromDeck rem) [] 0
     where
         ps = [Player 0 h ((0,0),0)]
         (h,rem) = drawNTiles 2 deckNew
@@ -56,8 +56,8 @@ boardFromDeck deck = Board $ chunksOf 6 ts'
         ts = map Just deck              
         
 -- Updates the board by placing the tile on the given position
-(@@=) :: Board -> Pos -> Tile -> Board
-(@@=) b p t = Board (updateTile (tiles b) p t)
+updateBoard :: Board -> Pos -> Tile -> Board
+updateBoard b p t = Board (updateTile (tiles b) p t)
 
 -- | A single tile, which is represented by a list of connections
 newtype Tile = Tile {conn :: [Connection]}
@@ -103,13 +103,13 @@ type Link = Int
 -- | A player, represented by an id, a hand (which is a list of tiles)
 -- and a starting position. The starting position can be used to derive
 -- the current position using movePlayer
-data Player = Player {playerId :: Int, hand :: [Tile], start :: StartPos}
+data Player = Player {playerId :: Int, hand :: [Tile], start :: PiecePos}
                       deriving (Show, Eq)
 
-type StartPos = (Pos, Link)
+type PiecePos = (Pos, Link)
 
 -- | Given a list of starting positions, returns a list of new players
-playersNew :: [StartPos] -> [Player]
+playersNew :: [PiecePos] -> [Player]
 playersNew []     = []
 playersNew (x:xs) = playersNew xs ++ [Player n [] x]
     where n = length xs
@@ -125,15 +125,27 @@ type Pos = (Int, Int)
 -- | Simulates the movement of a player piece (moves it forward until it 
 -- reaches a bare connection or collides with an another player) and returns 
 -- the final position, tile and connection
-movePlayer :: Board -> StartPos -> (Pos, Maybe Tile, Connection)
-movePlayer b (p,l) | isOutside newPos = (newPos, tile, connection)
-                   | isNothing tile   = (newPos, tile, connection)
-                   | otherwise        =  movePlayer b (newPos, newLink)
+movePlayer :: Board -> PiecePos -> (Pos, Link)
+movePlayer b (pos, exitLink) 
+    | isOutside newPos  = (pos, exitLink)   -- cant move to next, because it is OOB
+    | isNothing newTile = (pos, exitLink)   -- cant move to next because it is empty
+    | otherwise         =  movePlayer b (newPos, newExitLink)
     where
-      tile       = b @@ p
-      connection = findConnection l (fromJust tile)
-      newPos     = p +++ linkOffs l
-      newLink    = mapLinks l
+        newExitLink  = findOtherLink newEntryLink (fromJust newTile)
+        newEntryLink = mapLinks exitLink
+        newTile      = b @@ newPos
+        newPos       = pos +++ linkOffs exitLink
+
+-- | Returns the other link connected to the link in the tile
+findOtherLink :: Link -> Tile -> Link
+findOtherLink l t = other l $ head $ filter (\ (a, b) -> a == l || b == l) (conn t)
+
+-- | Given a value and a tuple containing that value, 
+-- returns the other value in the tuple
+other :: Eq a => a -> (a,a) -> a
+other x (a,b) | x == a    = b
+              | x == b    = a
+              | otherwise = error "other : x is neither"
 
 -- | Returns the connection in the given tile containing the given link
 findConnection :: Link -> Tile -> Connection
@@ -162,7 +174,7 @@ nextTile b p l = b @@ p'
 -- | Returns the tile, or Nothing
 -- Will throw index errors if given bad pos
 (@@) :: Board -> Pos -> Maybe Tile
-(@@) b (x,y) = (tiles b !! x) !! y
+(@@) b (x,y) = (tiles b !! y) !! x
 
 -- | Returns the offset in position from a given link
 linkOffs :: Link -> (Int, Int)
@@ -197,6 +209,7 @@ adjacentPos (a,b) = zip [  a,a+1,  a,a-1]
 (+++) (a,b) (c,d) = (a+c,b+d)
 
 -- | Rotates a tile (by rotating its connections) by 90 deg clockwise n times
+-- negative values result in a counter clockwise rotation   
 rotateTile :: Tile -> Int -> Tile
 rotateTile t n  
     | n < 0     = rotateTile t (4+n)
