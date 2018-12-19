@@ -59,6 +59,14 @@ gameNew gen n
         (positions,gen'') = randomEdgePositions gen' n
         (deck,gen') = shuffle gen deckNew
 
+rotateHand :: Game -> Game
+rotateHand g = g{players = players'}
+    where
+        players' = map (\x -> if x == current then current' else x) (players g)
+        current' = current{hand = map (`rotateTile` 1) (hand current)}
+        current = fromJust (currPlayer g) 
+
+
 -- helper for fold
 drawForAll :: Player -> ([Player], [Tile]) -> ([Player],[Tile])
 drawForAll plr (ls, d) = (plr{hand = drawn} : ls, rem)

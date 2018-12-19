@@ -17,28 +17,33 @@ main = do
     void initGUI
     window <- windowNew
     set window [ windowTitle         := "Tsuro"
-               , windowResizable     := False]
+               , windowResizable     := True]
     
-    metaVBox <- vBoxNew
-    buttonBox <- hBoxNew
+    metaVBox <- vBoxNew False 10
+    buttonBox <- hBoxNew True 10
 
     gen <- getStdGen
     let (game, _) = gameNew gen 4 
+    
+    st <- newIORef game
 
     gameBox <- displayState game
 
-    -- test <- overlayNew
-    root <- getCurrentDirectory
-    img1 <- imageNewFromFile $ root ++ "/assets/blank.png"
-    img2 <- renderPiece 0 3
-    -- overlayAdd test img1
-    -- overlayAdd test img2
-    -- img1 <- renderPiece 0 2
-
-    overlayImage img2 img1
-
     containerAdd metaVBox gameBox
     containerAdd metaVBox buttonBox
+
+    btnRC <- buttonNew
+    set btnRC [buttonLabel := "RCW"]
+
+    btnRC `on` buttonActivated $ do
+        modifyIORef st rotateHand                   -- modify the state  
+        state <- readIORef st                       -- get the state from the monad
+        gameBox <- displayState state               -- render the new state
+        children <- containerGetChildren metaVBox   -- get children
+        containerRemove metaVBox (head children)    -- remove first child (hopefully the top)
+        containerAdd metaVBox gameBox               -- add new render
+
+    containerAdd buttonBox btnRC
 
     containerAdd window metaVBox
 
