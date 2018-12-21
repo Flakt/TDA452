@@ -10,16 +10,16 @@ bi = bw - 1  -- max board index
 
 -- | The entire game state, including players
 data Game = Game {players :: [Player],
-                  board :: Board, 
-                  deck :: [Tile], 
-                  turnNum :: Int}
+                  board :: Board,
+                  deck :: [Tile],
+                  currPlayerTurn :: Int}
                         deriving (Show, Eq)
 
 -- | A player, represented by an id, a hand (which is a list of tiles)
 -- and a starting position. The starting position can be used to derive
 -- the current position using movePlayer
-data Player = Player {playerId :: Int, 
-                      hand :: [Tile], 
+data Player = Player {playerId :: Int,
+                      hand :: [Tile],
                       start :: PiecePos}
                         deriving (Show, Eq)
 
@@ -52,8 +52,8 @@ gameNew gen n
     | n > 8 = error "gameNew : too many players"
     | otherwise = (Game players' boardNew deck' 0, gen'')
     where
-        (players',deck') = foldr drawForAll ([], deck) players 
-        
+        (players',deck') = foldr drawForAll ([], deck) players
+
         players = playersNew positions
         (positions,gen'') = randomEdgePositions gen' n
         (deck,gen') = shuffle gen deckNew
@@ -71,44 +71,34 @@ gameRotateHand n g = g{players = players'}
         current' = current{hand = map (`rotateTile` n) (hand current)}
         current = getCurrentPlayer g
 
--- | Places the tile in the current position (i.e. in front of the active player)
--- returning a new state which has updated
---      - the board (added the new tile)
---      - the current player's hand (removed played tile and drawn new)
---      - the deck (drawn from)
-gameMakeMove :: Tile -> Game -> Game
-gameMakeMove tile game = 
-    game{players = players', board = board', deck = rem, turnNum = turnNum game + 1}
-    where
-        players'    = map (\x -> if x == p then p' else x) (players game)
-        board'      = updateBoard b nextPos tile
-        -- nextPlayer  = getNextPlayer b p (players game)
-
-        nextPos = pos +++ gateOffs gate         -- find pos to place tile
-        (pos, gate) = movePlayer b (start p)    -- simulate the player
-        b = board game
-
-        p' = p {hand = hand'}
-            where hand' = (hand p \\ [tile]) ++ drawnCard
-        (drawnCard, rem) = drawNTiles 1 (deck game) 
-        p = getCurrentPlayer game
-
-
 -- | Gets the current player via ID
 getCurrentPlayer :: Game -> Player
 getCurrentPlayer g = players g !! getCurrentPlayerID g
 
+-- | Gets the ID of the current player (that is not game over)
+getCurrentPlayerID :: Game -> Int
+getCurrentPlayerID g = getCurrentPlayerID' g 0
+
+-- | Recursive function for determining the current players ID
+getCurrentPlayerID' :: Game -> Int -> Int
+getCurrentPlayerID' g n | not isDead = pIdx
+                        | otherwise  = getCurrentPlayerID' g (n+1)
+    where
+        pIdx   = (currPlayerTurn g + n) `mod` length (players g)
+        isDead = playerIsGameOver (board g) (players g !! pIdx)
+
+
 -- | Generates n random unique starting points
 randomEdgePositions :: StdGen -> Int -> ([PiecePos],StdGen)
 randomEdgePositions gen n = if allDifferent res     -- test uniqueness
-                            then (res,gen') 
+                            then (res,gen')
                             else randomEdgePositions gen' n
     where (res,gen') = randomEdgePositions' gen n
 
 randomEdgePositions' :: StdGen -> Int -> ([PiecePos],StdGen)
 randomEdgePositions' gen 0 = ([],gen)
 randomEdgePositions' gen n = (pos : childVal,childGen)
-    where 
+    where
         (childVal, childGen)     = randomEdgePositions' gen' (n-1)
         (pos, gen') = randomEdgePos gen
 
@@ -121,24 +111,35 @@ randomEdgePos gen = (pos, gen')
 
 -- | Magical function that converts an integer to a PiecePos
 numToStartPos :: Int -> PiecePos
-numToStartPos v 
+numToStartPos v
     | v `elem` [bw*0 .. bw*2-1] = ((    (v - bw*0) `div` 2, -1), 4 + v `mod` 2)
     | v `elem` [bw*2 .. bw*4-1] = ((bw, (v - bw*2) `div` 2    ), 6 + v `mod` 2)
     | v `elem` [bw*4 .. bw*6-1] = ((    (v - bw*4) `div` 2, bw), 0 + v `mod` 2)
     | v `elem` [bw*6 .. bw*8-1] = ((-1, (v - bw*6) `div` 2    ), 2 + v `mod` 2)
 
--- | Gets the ID of the current player (that is not game over)
-getCurrentPlayerID :: Game -> Int
-getCurrentPlayerID g = getCurrentPlayerID' g 0
-
--- | Recursive function for determining the current players ID
-getCurrentPlayerID' :: Game -> Int -> Int
-getCurrentPlayerID' g n | not isDead = pIdx
-                        | otherwise  = getCurrentPlayerID' g (n+1) 
+-- | Places the tile in the current position (i.e. in front of the active player)
+-- returning a new state which has updated
+--      - the board (added the new tile)
+--      - the current player's hand (removed played tile and drawn new)
+--      - the deck (drawn from)
+gameMakeMove :: Tile -> Game -> Game
+gameMakeMove tile game =
+    game{players = players', board = board', currPlayerTurn = pID + 1}
     where
-        pIdx   = (turnNum g + n) `mod` length (players g)
-        isDead = playerIsGameOver (board g) (players g !! pIdx)
-        
+        players'    = map (\x -> if x == p then p' else x) (players game)
+        board'      = updateBoard b nextPos tile
+        -- nextPlayer  = getNextPlayer b p (players game)
+
+        nextPos = pos +++ gateOffs gate         -- find pos to place tile
+        (pos, gate) = movePlayer b (start p)    -- simulate the player
+        b = board game
+
+        p' = p {hand = hand'}
+            where hand' = (hand p \\ [tile]) ++ drawnCard
+        (drawnCard, rem) = drawNTiles 1 (deck game)
+        p = getCurrentPlayer game
+        pID = getCurrentPlayerID game
+
 -- | Construct a tile from a list of Gates
 tile' :: [Gate] -> Tile
 tile' [a,b,c,d,e,f,g,h] = Tile [(a,b),(c,d),(e,f),(g,h)]
@@ -193,7 +194,7 @@ playersNew (x:xs) = playersNew xs ++ [Player (length xs) [] x]
 -- tests this by seeing if the player reaches an edge that isnt starting pos
 playerIsGameOver :: Board -> Player -> Bool
 playerIsGameOver b p = onEdge piecePoint && piecePoint /= start p
-        where piecePoint = movePlayer b (start p) 
+        where piecePoint = movePlayer b (start p)
 
 onEdge :: PiecePos -> Bool
 onEdge ((x,y), l) =
@@ -206,7 +207,7 @@ onEdge ((x,y), l) =
 -- reaches a bare connection or collides with an another player) and returns
 -- the final position, tile and connection
 movePlayer :: Board -> PiecePos -> PiecePos
-movePlayer b (pos, exitGate) 
+movePlayer b (pos, exitGate)
     | isOutside newPos  = (pos, exitGate)   -- cant move to next, because it is OOB
     | isNothing newTile = (pos, exitGate)   -- cant move to next because it is empty
     | otherwise         =  movePlayer b (newPos, newExitGate)
