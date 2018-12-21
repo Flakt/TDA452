@@ -11,6 +11,7 @@ import Graphics.UI.Gtk hiding (Action)
 import Graphics.UI.Gtk.Layout.Grid
 import System.Directory
 import System.Random
+import Control.Arrow
 
 main :: IO ()
 main = do
@@ -19,31 +20,32 @@ main = do
     set window [ windowTitle         := "Tsuro"
                , windowResizable     := True]
     
-    metaVBox <- vBoxNew False 10
+    vbox <- vBoxNew False 10
     buttonBox <- hBoxNew True 10
 
     gen <- getStdGen
-    let (game, _) = gameNew gen 4 
+    let (game, _) = gameNew gen 4
     
     st <- newIORef game
 
-    gameBox <- displayState game
+    gameBox <- displayState vbox window st game
 
-    containerAdd metaVBox buttonBox
-    containerAdd metaVBox gameBox
+    containerAdd vbox buttonBox
+    containerAdd vbox gameBox
 
-    btnR <- mkButton metaVBox window st (rotateHand 1)
-    btnL <- mkButton metaVBox window st (rotateHand (-1))
+    btnR <- mkButton vbox window st (gameRotateHand 1)
+    btnL <- mkButton vbox window st (gameRotateHand (-1))
     set btnR [buttonLabel := "Rotate Right"]
     set btnL [buttonLabel := "Rotate Left"]
 
     cd <- getCurrentDirectory
     testImage <- imageNewFromFile (cd ++ "/assets/dragon.png")
+    testImage2 <- imageNewFromFile (cd ++ "/assets/player0.png")
+    overlayImage testImage2 testImage
 
+    -- test box
     evtBox <- eventBoxNew
-    -- eventBoxSetVisibleWindow evtBox False
     containerAdd evtBox testImage
-
     evtBox `on` buttonPressEvent $ tryEvent $ do
         liftIO $ putStrLn "static label clicked"
 
@@ -51,7 +53,7 @@ main = do
     containerAdd buttonBox btnL
     containerAdd buttonBox evtBox
 
-    containerAdd window metaVBox
+    containerAdd window vbox
 
     window `on` deleteEvent $ do
         liftIO mainQuit
@@ -60,12 +62,13 @@ main = do
     widgetShowAll window    
     mainGUI
 
-mkTileButton :: VBox -> Window -> IORef Game -> (Game -> Game) -> IO EventBox
-mkTileButton b w st f = do
+mkTileButton :: VBox -> Window -> IORef Game -> (Game -> Game) -> Tile -> IO EventBox
+mkTileButton b w st f t = do
     evtBox <- eventBoxNew
+    img <- renderTile (Just t)
+    evtBox `containerAdd` img
     evtBox `on` buttonPressEvent $ tryEvent $ do
         liftIO $ modifyState b w st f
-    
     return evtBox
 
 -- | Makes a button that changes the state and updates the view
@@ -82,21 +85,22 @@ modifyState b w st f = do
         modifyIORef st f
         
         newState <- readIORef st
-        gameBox <- displayState newState
+        gameBox <- displayState b w st newState
 
         children <- containerGetChildren b   -- get children
         containerRemove b (last children)    -- remove first child (hopefully the top)
         containerAdd b gameBox               -- add new render
         
-        -- print $ "fired rotate action : " ++ show newState
+        print $ show newState
+
         widgetShowAll w
 
 -- | Creates a new element based on a game state, containing 
 --   - a grid of images
 --   - the current player's hand
 --   - buttons to rotate or place
-displayState :: Game -> IO VBox
-displayState game = do
+displayState :: VBox -> Window -> IORef Game -> Game -> IO VBox
+displayState b w st game = do
 
     -- add the board
     vb <- vBoxNew False 10
@@ -104,18 +108,20 @@ displayState game = do
     boxPackStart vb boardGrid PackNatural 0     
 
     -- add the current player's hand
+    let current = getCurrentPlayer game
     let ls = hand (getCurrentPlayer game)
-    handBox <- displayHand ls
-    boxPackStart vb handBox PackGrow 10
+    handBox <- displayHand b w st ls
+    widgetModifyBg handBox StateNormal (playerColor (playerId current))
+    boxPackStart vb handBox PackGrow 10 
     
     return vb
 
 -- | Renders a hand as a row of tiles
-displayHand :: [Tile] -> IO HBox
-displayHand hand = do
+displayHand :: VBox -> Window -> IORef Game -> [Tile] -> IO HBox
+displayHand b w st hand = do
     hb <- hBoxNew True 10
     mapM_  (\t -> do
-        img <- renderTile (Just t)
+        img <- mkTileButton b w st (gameMakeMove t) t
         boxPackStart hb img PackNatural 0) hand
     return hb
 
@@ -125,12 +131,12 @@ displayBoard b ps = do
     let coords = [(x,y) | y <- [0..5], x <- [0..5]]
     let tiles' = zip (concat $ tiles b) coords
 
-    let positions = undefined -- TODO map (\pl -> movePlayer pl -- should give [(id, pos, link)]
+    let playerPositions = map (\x -> (movePlayer b (start x),  playerId x)) ps -- could be done with &&&
 
     grid <- gridNew
     gridSetRowHomogeneous grid True
     gridSetColumnHomogeneous grid True
-    mapM_ (attachTile grid) tiles'
+    mapM_ (attachTile grid playerPositions) tiles'
 
     hb <- hBoxNew True 0
     boxPackStart hb grid PackNatural 0
@@ -145,24 +151,36 @@ overlayImage a b = do
     imageNewFromPixbuf bufB
 
 -- | Attaches a overlay with an image to the grid
-attachTile :: Grid -> (Maybe Tile, Pos) -> IO ()
-attachTile grid (tile, (x,y)) = do
-    -- TODO overlay player
-    img <- renderTile tile 
-    gridAttach grid img x y 1 1    
+attachTile :: Grid -> [(PiecePos, Int)] -> (Maybe Tile, Pos) -> IO ()
+attachTile grid ls (tile, (x,y)) = do
+    img <- renderTile tile
+
+    let ls' = filter filterToTile ls
+    let border = filter filterBorder ls -- list of pieces on the outside border
+
+    mapM_ (\(( (px,py) ,l) ,id) -> do
+        pImg <- renderPiece id l 
+        overlayImage pImg img) ls'
+    
+    -- mapM_ (\(( (px,py) ,l) ,id) -> do
+    --     pImg <- renderPiece id (mapGates l) 
+    --     overlayImage pImg img) ls'
+    
+    gridAttach grid img x y 1 1   
+    where
+        filterToTile (((px,py),_),_) = px == x && py == y 
+        filterBorder (((px,py),_),_) = (x == 0 && px == x-1 && py == y) || 
+                                       (x == bi && px == x+1 && py == y) ||
+                                       (y == 0 && px == x && py == y+1) ||
+                                       (y == bi && px == x && py == y-1) 
 
 -- | Renders a player's piece
-renderPiece :: Int -> Link -> IO Image -- TODO this can probably be improved
-renderPiece id l 
-    | odd l = do
+renderPiece :: Int -> Gate -> IO Image -- TODO this can probably be improved
+renderPiece id l  = do
         root    <- getCurrentDirectory
         img     <- imageNewFromFile $ root ++ "/assets/player" ++ show id ++ ".png" 
         imgFlip <- fliphImage img 
-        rotateImage imgFlip (l `div` 2)
-    | otherwise = do
-        root    <- getCurrentDirectory
-        img     <- imageNewFromFile $ root ++ "/assets/player" ++ show id ++ ".png" 
-        rotateImage img (l `div` 2)
+        rotateImage (if odd l then imgFlip else img) (l `div` 2)
 
 -- | Renders a tile
 renderTile :: Maybe Tile -> IO Image
@@ -213,3 +231,14 @@ rotateImage' img = do
     pb <- imageGetPixbuf img
     pbrot <- pixbufRotateSimple pb PixbufRotateClockwise
     imageNewFromPixbuf pbrot
+
+
+playerColor :: Int -> Color
+playerColor 0 = Color 40000 0 0
+playerColor 1 = Color 0 40000 0
+playerColor 2 = Color 40000 40000 5000
+playerColor 3 = Color 0 0 40000
+playerColor 4 = Color 40000 0 40000
+playerColor 5 = Color 0 0 65000
+playerColor 6 = Color 40000 20000 20000
+playerColor 7 = Color 0 40000 20000

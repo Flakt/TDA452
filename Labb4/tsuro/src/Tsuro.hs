@@ -4,11 +4,9 @@ import Data.List.Split
 import Data.Maybe
 import System.Random
 
--- TODO evaluate if a Map is more useful in some cases
-
 -- Magic constants for board size
 bw = 6      -- board width
-q = bw - 1  -- max board index
+bi = bw - 1  -- max board index
 
 -- | The entire game state, including players
 data Game = Game {players :: [Player],
@@ -34,7 +32,7 @@ newtype Tile = Tile {conn :: [Connection]}
                         deriving (Eq, Show, Read)
 
 {-  Connections are internal within the Tile.
-    Below is a representation of how the Links are indexed
+    Below is a representation of how the Gates are indexed
     Rotating a tile is done by transposing its connections
 
      01
@@ -42,9 +40,9 @@ newtype Tile = Tile {conn :: [Connection]}
     6XX3
      54
 -}
-type Connection = (Link, Link)
-type Link = Int
-type PiecePos = (Pos, Link)
+type Connection = (Gate, Gate)
+type Gate = Int
+type PiecePos = (Pos, Gate)
 type Hand = [Tile]
 type Pos = (Int, Int)
 
@@ -60,20 +58,22 @@ gameNew gen n
         (positions,gen'') = randomEdgePositions gen' n
         (deck,gen') = shuffle gen deckNew
 
-rotateHand :: Int -> Game -> Game
-rotateHand n g = g{players = players'}
+-- helper for fold
+drawForAll :: Player -> ([Player], [Tile]) -> ([Player],[Tile])
+drawForAll plr (ls, d) = (plr{hand = drawn} : ls, rem)
+    where (drawn, rem) = drawNTiles 3 d
+
+-- | Rotates the current player's hand counterwise or clockwise
+gameRotateHand :: Int -> Game -> Game
+gameRotateHand n g = g{players = players'}
     where
         players' = map (\x -> if x == current then current' else x) (players g)
         current' = current{hand = map (`rotateTile` n) (hand current)}
         current = getCurrentPlayer g
 
+-- | Gets the current player via ID
 getCurrentPlayer :: Game -> Player
 getCurrentPlayer g = players g !! getCurrentPlayerID g
-
--- helper for fold
-drawForAll :: Player -> ([Player], [Tile]) -> ([Player],[Tile])
-drawForAll plr (ls, d) = (plr{hand = drawn} : ls, rem)
-    where (drawn, rem) = drawNTiles 3 d
 
 -- | Generates n random unique starting points
 randomEdgePositions :: StdGen -> Int -> ([PiecePos],StdGen)
@@ -109,16 +109,16 @@ numToStartPos v
 --      - the board (added the new tile)
 --      - the current player's hand (removed played tile and drawn new)
 --      - the deck (drawn from)
-gameMakeMove :: Game -> Tile -> Game
-gameMakeMove game tile = 
+gameMakeMove :: Tile -> Game -> Game
+gameMakeMove tile game = 
     game{players = players', board = board', turnNum = turnNum game + 1}
     where
         players'    = map (\x -> if x == p then p' else x) (players game)
         board'      = updateBoard b nextPos tile
         -- nextPlayer  = getNextPlayer b p (players game)
 
-        nextPos = pos +++ linkOffs link         -- find pos to place tile
-        (pos, link) = movePlayer b (start p)    -- simulate the player
+        nextPos = pos +++ gateOffs gate         -- find pos to place tile
+        (pos, gate) = movePlayer b (start p)    -- simulate the player
         b = board game
 
         p' = p {hand = hand'}
@@ -126,24 +126,24 @@ gameMakeMove game tile =
         (drawnCard, rem) = drawNTiles 1 (deck game) 
         p = getCurrentPlayer game
 
--- | Get
+-- | Gets the ID of the current player (that is not game over)
 getCurrentPlayerID :: Game -> Int
-getCurrentPlayerID g = initialValue
-    where
-        -- TODO change such that dead players are skipped
-        initialValue = turnNum g `mod` length (players g) 
+getCurrentPlayerID g = getCurrentPlayerID' g 0
 
-sampleGame :: Game
-sampleGame = Game ps (boardFromDeck rem) [] 0
+-- | Recursive function for determining the current players ID
+getCurrentPlayerID' :: Game -> Int -> Int
+getCurrentPlayerID' g n | not isDead = pIdx
+                        | otherwise  = getCurrentPlayerID' g (n+1) 
     where
-        ps = [Player 0 h ((0,0),0)]
-        (h,rem) = drawNTiles 2 deckNew
-
--- | Construct a tile from a list of links
-tile' :: [Link] -> Tile
+        pIdx   = (turnNum g + n) `mod` length (players g)
+        isDead = playerIsGameOver (board g) (players g !! pIdx)
+        
+-- | Construct a tile from a list of Gates
+tile' :: [Gate] -> Tile
 tile' [a,b,c,d,e,f,g,h] = Tile [(a,b),(c,d),(e,f),(g,h)]
 
-toList :: Tile -> [Link]
+-- | Breaks down a tile into a list of Gates
+toList :: Tile -> [Gate]
 toList (Tile [(a,b),(c,d),(e,f),(g,h)]) = [a,b,c,d,e,f,g,h]
 
 instance Show Board where
@@ -154,13 +154,6 @@ instance Show Board where
 
 boardNew = Board (replicate bw (replicate bw Nothing))
 
--- | Fills a board with a list of tiles, from top left to bottom right
-boardFromDeck :: [Tile] -> Board
-boardFromDeck deck = Board $ chunksOf 6 ts'
-    where
-        ts' = ts ++ replicate (36 - length ts) Nothing -- adds blanks to end
-        ts = map Just deck
-
 -- Updates the board by placing the tile on the given position
 updateBoard :: Board -> Pos -> Tile -> Board
 updateBoard b p t = Board (updateTile (tiles b) p t)
@@ -168,8 +161,7 @@ updateBoard b p t = Board (updateTile (tiles b) p t)
 -- | Returns a new tile
 tileNew :: StdGen -> (Tile, StdGen)
 tileNew gen = (tile' ls, gen')
-    where
-        (ls, gen') = shuffle gen [0..7]
+    where (ls, gen') = shuffle gen [0..7]
 
 -- | Returns a new deck of tiles (always the same order)
 deckNew :: [Tile]
@@ -194,8 +186,7 @@ drawNTiles = splitAt
 -- | Given a list of starting positions, returns a list of new players
 playersNew :: [PiecePos] -> [Player]
 playersNew []     = []
-playersNew (x:xs) = playersNew xs ++ [Player n [] x]
-    where n = length xs
+playersNew (x:xs) = playersNew xs ++ [Player (length xs) [] x]
 
 -- | Checks if a player is dead on a given board state
 -- tests this by seeing if the player reaches an edge that isnt starting pos
@@ -206,27 +197,27 @@ playerIsGameOver b p = onEdge piecePoint && piecePoint /= start p
 onEdge :: PiecePos -> Bool
 onEdge ((x,y), l) =
     (x == 0 && (l == 6 || l == 7)) || -- on left edge
-    (x == q && (l == 2 || l == 3)) || -- on right edge
+    (x == bi && (l == 2 || l == 3)) || -- on right edge
     (y == 0 && (l == 0 || l == 1)) || -- on upper edge
-    (y == q && (l == 4 || l == 5))    -- on bottom edge
+    (y == bi && (l == 4 || l == 5))    -- on bottom edge
 
 -- | Simulates the movement of a player piece (moves it forward until it
 -- reaches a bare connection or collides with an another player) and returns
 -- the final position, tile and connection
 movePlayer :: Board -> PiecePos -> PiecePos
-movePlayer b (pos, exitLink) 
-    | isOutside newPos  = (pos, exitLink)   -- cant move to next, because it is OOB
-    | isNothing newTile = (pos, exitLink)   -- cant move to next because it is empty
-    | otherwise         =  movePlayer b (newPos, newExitLink)
+movePlayer b (pos, exitGate) 
+    | isOutside newPos  = (pos, exitGate)   -- cant move to next, because it is OOB
+    | isNothing newTile = (pos, exitGate)   -- cant move to next because it is empty
+    | otherwise         =  movePlayer b (newPos, newExitGate)
     where
-        newExitLink  = findOtherLink newEntryLink (fromJust newTile)
-        newEntryLink = mapLinks exitLink
+        newExitGate  = findOtherGate newEntryGate (fromJust newTile)
+        newEntryGate = mapGates exitGate
         newTile      = b @@ newPos
-        newPos       = pos +++ linkOffs exitLink
+        newPos       = pos +++ gateOffs exitGate
 
--- | Returns the other link connected to the link in the tile
-findOtherLink :: Link -> Tile -> Link
-findOtherLink l t = other l $ head $ filter (\ (a, b) -> a == l || b == l) (conn t)
+-- | Returns thef other Gate connected to the Gate in the tile
+findOtherGate :: Gate -> Tile -> Gate
+findOtherGate l t = other l $ head $ filter (\ (a, b) -> a == l || b == l) (conn t)
 
 -- | Given a value and a tuple containing that value,
 -- returns the other value in the tuple
@@ -235,11 +226,11 @@ other x (a,b) | x == a    = b
               | x == b    = a
               | otherwise = error "other : x is neither"
 
--- | Returns the connection in the given tile containing the given link
-findConnection :: Link -> Tile -> Connection
+-- | Returns the connection in the given tile containing the given Gate
+findConnection :: Gate -> Tile -> Connection
 findConnection l t = fromJust(find f (conn t))
     where f (a, b) = a == target || b == target
-          target   = mapLinks l
+          target   = mapGates l
 
 -- | Checks if a given position is out of the game boundaries
 isOutside :: Pos -> Bool
@@ -248,27 +239,27 @@ isOutside pos = (x > bw || y > bw) || (x < 0 || y < 0)
       x = fst pos
       y = snd pos
 
--- | Maps a link with the link it leads to when moving from a tile
-mapLinks :: Link -> Link
-mapLinks l | even l = (l + 5) `mod` 8
-mapLinks l | odd  l = (l + 3) `mod` 8
+-- | Maps a Gate with the Gate it leads to when moving from a tile
+mapGates :: Gate -> Gate
+mapGates l | even l = (l + 5) `mod` 8
+mapGates l | odd  l = (l + 3) `mod` 8
 
 -- | Returns Just the next tile to travel to, or Nothing
-nextTile :: Board -> Pos -> Link -> Maybe Tile
-nextTile b p l = b @@ (p +++ linkOffs l)
+nextTile :: Board -> Pos -> Gate -> Maybe Tile
+nextTile b p l = b @@ (p +++ gateOffs l)
 
 -- | Returns the tile, or Nothing
 -- Will throw index errors if given bad pos
 (@@) :: Board -> Pos -> Maybe Tile
 (@@) b (x,y) = (tiles b !! y) !! x
 
--- | Returns the offset in position from a given link
-linkOffs :: Link -> (Int, Int)
-linkOffs l  | l == 0 || l == 1 = ( 0,-1)
+-- | Returns the offset in position from a given Gate
+gateOffs :: Gate -> (Int, Int)
+gateOffs l  | l == 0 || l == 1 = ( 0,-1)
             | l == 2 || l == 3 = ( 1, 0)
             | l == 4 || l == 5 = ( 0, 1)
             | l == 6 || l == 7 = (-1, 0)
-            | otherwise = error "linkOffs : bad value"
+            | otherwise = error "GateOffs : bad value"
 
 -- Replaces a tile in a matrix of tiles with a given tile
 updateTile :: [[Maybe Tile]] -> Pos -> Tile -> [[Maybe Tile]]
@@ -287,8 +278,7 @@ updateTile ts (x,y) new_tile
 -- Given a position, returns all the "Manhattan"-adjacent tiles
 -- * with no respect to the edges of the board
 adjacentPos :: Pos -> [Pos]
-adjacentPos (a,b) = zip [  a,a+1,  a,a-1]
-                        [b+1,  b,b-1,  b]
+adjacentPos p = map (+++ p) [(0,1),(1,0),(-1,0),(0,-1)]
 
 -- | Position addition
 (+++) :: Pos -> Pos -> Pos
@@ -300,8 +290,8 @@ rotateTile :: Tile -> Int -> Tile
 rotateTile t n
     | n < 0     = rotateTile t (4+n)
     | otherwise = Tile (map transposeConn (conn t))
-    where transposeConn (a,b) = (transposeLink a,transposeLink b)
-          transposeLink x = (x +(2 * n)) `mod` 8
+    where transposeConn (a,b) = (transposeGate a,transposeGate b)
+          transposeGate x = (x +(2 * n)) `mod` 8
 
 -- | Returns true if all elements in the given list are unique
 -- stolen from stackoverflow
@@ -310,13 +300,11 @@ allDifferent list = case list of
     []      -> True
     (x:xs)  -> x `notElem` xs && allDifferent xs
 
--- | Normalizes a tile such that all connections have their lowest link first
--- and that the list of connections is sorted on the first link in each conn
+-- | Normalizes a tile such that all connections have their lowest Gate first
+-- and that the list of connections is sorted on the first Gate in each conn
 -- used to easily map to a image file in IO
 normalize :: Tile -> Tile
-normalize t = Tile newConn
-    where
-        newConn = sortOn fst $
+normalize t = Tile $ sortOn fst $
                   map (\(a,b) -> if a < b then (a,b) else (b,a)) (conn t)
 
 defaultDeck :: [Tile]
