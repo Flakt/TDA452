@@ -60,13 +60,15 @@ gameNew gen n
         (positions,gen'') = randomEdgePositions gen' n
         (deck,gen') = shuffle gen deckNew
 
-rotateHand :: Game -> Game
-rotateHand g = g{players = players'}
+rotateHand :: Int -> Game -> Game
+rotateHand n g = g{players = players'}
     where
         players' = map (\x -> if x == current then current' else x) (players g)
-        current' = current{hand = map (`rotateTile` 1) (hand current)}
-        current = fromJust (currPlayer g) 
+        current' = current{hand = map (`rotateTile` n) (hand current)}
+        current = getCurrentPlayer g
 
+getCurrentPlayer :: Game -> Player
+getCurrentPlayer g = players g !! getCurrentPlayerID g
 
 -- helper for fold
 drawForAll :: Player -> ([Player], [Tile]) -> ([Player],[Tile])
@@ -122,7 +124,7 @@ gameMakeMove game tile =
         p' = p {hand = hand'}
             where hand' = (hand p \\ [tile]) ++ drawnCard
         (drawnCard, rem) = drawNTiles 1 (deck game) 
-        p = fromJust (currPlayer game)
+        p = getCurrentPlayer game
 
 -- | Get
 getCurrentPlayerID :: Game -> Int
@@ -132,7 +134,7 @@ getCurrentPlayerID g = initialValue
         initialValue = turnNum g `mod` length (players g) 
 
 sampleGame :: Game
-sampleGame = Game ps (boardFromDeck rem) [] (Just (head ps))
+sampleGame = Game ps (boardFromDeck rem) [] 0
     where
         ps = [Player 0 h ((0,0),0)]
         (h,rem) = drawNTiles 2 deckNew

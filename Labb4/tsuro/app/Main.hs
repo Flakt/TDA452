@@ -32,33 +32,26 @@ main = do
     containerAdd metaVBox buttonBox
     containerAdd metaVBox gameBox
 
-    btnRC <- buttonNew
-    set btnRC [buttonLabel := "RCW"]
+    btnR <- mkButton metaVBox window st (rotateHand 1)
+    btnL <- mkButton metaVBox window st (rotateHand (-1))
+    set btnR [buttonLabel := "Rotate Right"]
+    set btnL [buttonLabel := "Rotate Left"]
 
-    btnRC `on` buttonActivated $ do
-        oldState <- readIORef st
-        print $ "old state: " ++ show game
-        modifyIORef' st rotateHand                   -- modify the state  
-        -- gameSt <- readIORef st                       -- get the state from the monad
-        -- gen <- newStdGen
-        -- let (newState,_) = gameNew gen 4
-        -- writeIORef st newState
-        -- gameBox <- displayState newState               -- render the new state
-        newState <- readIORef st
-        gameBox <- displayState newState
+    cd <- getCurrentDirectory
+    testImage <- imageNewFromFile (cd ++ "/assets/dragon.png")
 
-        children <- containerGetChildren metaVBox   -- get children
-        containerRemove metaVBox (last children)    -- remove first child (hopefully the top)
-        containerAdd metaVBox gameBox               -- add new render
-        
-        print $ "fired rotate action : " ++ show newState
-        widgetShowAll window
+    evtBox <- eventBoxNew
+    -- eventBoxSetVisibleWindow evtBox False
+    containerAdd evtBox testImage
 
-    containerAdd buttonBox btnRC
+    evtBox `on` buttonPressEvent $ tryEvent $ do
+        liftIO $ putStrLn "static label clicked"
+
+    containerAdd buttonBox btnR
+    containerAdd buttonBox btnL
+    containerAdd buttonBox evtBox
 
     containerAdd window metaVBox
-
-    -- TODO make vbox containing game window?
 
     window `on` deleteEvent $ do
         liftIO mainQuit
@@ -66,6 +59,37 @@ main = do
 
     widgetShowAll window    
     mainGUI
+
+mkTileButton :: VBox -> Window -> IORef Game -> (Game -> Game) -> IO EventBox
+mkTileButton b w st f = do
+    evtBox <- eventBoxNew
+    evtBox `on` buttonPressEvent $ tryEvent $ do
+        liftIO $ modifyState b w st f
+    
+    return evtBox
+
+-- | Makes a button that changes the state and updates the view
+mkButton :: VBox -> Window ->IORef Game -> (Game -> Game)  -> IO Button
+mkButton box window st f = do
+    button <- buttonNew
+    button `on` buttonActivated $ do
+        modifyState box window st f
+    return button
+
+-- | 
+modifyState :: VBox -> Window -> IORef Game -> (Game -> Game) -> IO ()
+modifyState b w st f = do
+        modifyIORef st f
+        
+        newState <- readIORef st
+        gameBox <- displayState newState
+
+        children <- containerGetChildren b   -- get children
+        containerRemove b (last children)    -- remove first child (hopefully the top)
+        containerAdd b gameBox               -- add new render
+        
+        -- print $ "fired rotate action : " ++ show newState
+        widgetShowAll w
 
 -- | Creates a new element based on a game state, containing 
 --   - a grid of images
@@ -80,7 +104,7 @@ displayState game = do
     boxPackStart vb boardGrid PackNatural 0     
 
     -- add the current player's hand
-    let ls = maybe [] hand (currPlayer game)
+    let ls = hand (getCurrentPlayer game)
     handBox <- displayHand ls
     boxPackStart vb handBox PackGrow 10
     
@@ -164,7 +188,7 @@ rotationsFromBase' tile num
 tileToFilepath :: Maybe Tile -> IO String
 tileToFilepath tile = do
     root <- getCurrentDirectory
-    let id = maybe "blank" (filter (/=',') . dropFirstAndLast . show . toList . normalize) tile
+    let id = maybe "blank" (filter (/=',') . concatMap show . toList . normalize) tile
     return (root ++ "/assets/" ++ 
             id ++ ".png")
 
@@ -189,14 +213,3 @@ rotateImage' img = do
     pb <- imageGetPixbuf img
     pbrot <- pixbufRotateSimple pb PixbufRotateClockwise
     imageNewFromPixbuf pbrot
-
-dropFirstAndLast :: String -> String
-dropFirstAndLast s = drop 1 $ take (-1 + length s) s
-
-
-
---modState :: IORef Game -> (Game -> Game) -> IORef Game
-modState ref f = do
-    oldState <- readIORef ref
-    writeIORef ref (f oldState)
-    return ref
