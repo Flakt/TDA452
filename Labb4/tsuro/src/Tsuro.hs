@@ -14,8 +14,8 @@ q = bw - 1  -- max board index
 data Game = Game {players :: [Player],
                   board :: Board, 
                   deck :: [Tile], 
-                  currPlayer :: Maybe Player}
-                    deriving (Show)
+                  turnNum :: Int}
+                        deriving (Show, Eq)
 
 -- | A player, represented by an id, a hand (which is a list of tiles)
 -- and a starting position. The starting position can be used to derive
@@ -27,6 +27,7 @@ data Player = Player {playerId :: Int,
 
 -- | The board, a list of rows of tiles, standard size is 6x6
 newtype Board = Board {tiles :: [[Maybe Tile]]}
+                        deriving (Eq)
 
 -- | A single tile, which is represented by a list of connections
 newtype Tile = Tile {conn :: [Connection]}
@@ -51,7 +52,7 @@ type Pos = (Int, Int)
 gameNew :: StdGen -> Int -> (Game, StdGen)
 gameNew gen n
     | n > 8 = error "gameNew : too many players"
-    | otherwise = (Game players' boardNew deck' (Just (head players')), gen'')
+    | otherwise = (Game players' boardNew deck' 0, gen'')
     where
         (players',deck') = foldr drawForAll ([], deck) players 
         
@@ -108,11 +109,11 @@ numToStartPos v
 --      - the deck (drawn from)
 gameMakeMove :: Game -> Tile -> Game
 gameMakeMove game tile = 
-    game{players = players', board = board', currPlayer = nextPlayer}
+    game{players = players', board = board', turnNum = turnNum game + 1}
     where
         players'    = map (\x -> if x == p then p' else x) (players game)
         board'      = updateBoard b nextPos tile
-        nextPlayer  = getNextPlayer b p (players game)
+        -- nextPlayer  = getNextPlayer b p (players game)
 
         nextPos = pos +++ linkOffs link         -- find pos to place tile
         (pos, link) = movePlayer b (start p)    -- simulate the player
@@ -123,12 +124,12 @@ gameMakeMove game tile =
         (drawnCard, rem) = drawNTiles 1 (deck game) 
         p = fromJust (currPlayer game)
 
--- | Next player after the current player, excluding players with game over
-getNextPlayer :: Board -> Player -> [Player] -> Maybe Player
-getNextPlayer b current ls = find (not . playerIsGameOver b) ls'
+-- | Get
+getCurrentPlayerID :: Game -> Int
+getCurrentPlayerID g = initialValue
     where
-        ls' = drop (idx + 1) ls ++ take (idx + 1) ls -- make "loop"
-        idx = fromJust $ elemIndex current ls  
+        -- TODO change such that dead players are skipped
+        initialValue = turnNum g `mod` length (players g) 
 
 sampleGame :: Game
 sampleGame = Game ps (boardFromDeck rem) [] (Just (head ps))

@@ -36,16 +36,22 @@ main = do
     set btnRC [buttonLabel := "RCW"]
 
     btnRC `on` buttonActivated $ do
-        -- modifyIORef' st rotateHand                   -- modify the state  
-        gameSt <- readIORef st                       -- get the state from the monad
-        gen <- newStdGen
-        let (newState,_) = gameNew gen 4
+        oldState <- readIORef st
+        print $ "old state: " ++ show game
+        modifyIORef' st rotateHand                   -- modify the state  
+        -- gameSt <- readIORef st                       -- get the state from the monad
+        -- gen <- newStdGen
+        -- let (newState,_) = gameNew gen 4
         -- writeIORef st newState
-        gameBox <- displayState newState               -- render the new state
+        -- gameBox <- displayState newState               -- render the new state
+        newState <- readIORef st
+        gameBox <- displayState newState
+
         children <- containerGetChildren metaVBox   -- get children
         containerRemove metaVBox (last children)    -- remove first child (hopefully the top)
         containerAdd metaVBox gameBox               -- add new render
-        print $ "fired rotate action" ++ show newState
+        
+        print $ "fired rotate action : " ++ show newState
         widgetShowAll window
 
     containerAdd buttonBox btnRC
@@ -186,3 +192,11 @@ rotateImage' img = do
 
 dropFirstAndLast :: String -> String
 dropFirstAndLast s = drop 1 $ take (-1 + length s) s
+
+
+
+--modState :: IORef Game -> (Game -> Game) -> IORef Game
+modState ref f = do
+    oldState <- readIORef ref
+    writeIORef ref (f oldState)
+    return ref
