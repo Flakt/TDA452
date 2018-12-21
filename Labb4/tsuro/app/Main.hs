@@ -46,7 +46,7 @@ main = do
     -- test box
     evtBox <- eventBoxNew
     containerAdd evtBox testImage
-    evtBox `on` buttonPressEvent $ tryEvent $ do
+    evtBox `on` buttonPressEvent $ tryEvent $
         liftIO $ putStrLn "static label clicked"
 
     containerAdd buttonBox btnR
@@ -62,12 +62,13 @@ main = do
     widgetShowAll window    
     mainGUI
 
+-- | Makes a button tile
 mkTileButton :: VBox -> Window -> IORef Game -> (Game -> Game) -> Tile -> IO EventBox
 mkTileButton b w st f t = do
     evtBox <- eventBoxNew
     img <- renderTile (Just t)
     evtBox `containerAdd` img
-    evtBox `on` buttonPressEvent $ tryEvent $ do
+    evtBox `on` buttonPressEvent $ tryEvent $
         liftIO $ modifyState b w st f
     return evtBox
 
@@ -75,8 +76,7 @@ mkTileButton b w st f t = do
 mkButton :: VBox -> Window ->IORef Game -> (Game -> Game)  -> IO Button
 mkButton box window st f = do
     button <- buttonNew
-    button `on` buttonActivated $ do
-        modifyState box window st f
+    button `on` buttonActivated $ modifyState box window st f
     return button
 
 -- | 

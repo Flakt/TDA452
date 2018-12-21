@@ -71,6 +71,29 @@ gameRotateHand n g = g{players = players'}
         current' = current{hand = map (`rotateTile` n) (hand current)}
         current = getCurrentPlayer g
 
+-- | Places the tile in the current position (i.e. in front of the active player)
+-- returning a new state which has updated
+--      - the board (added the new tile)
+--      - the current player's hand (removed played tile and drawn new)
+--      - the deck (drawn from)
+gameMakeMove :: Tile -> Game -> Game
+gameMakeMove tile game = 
+    game{players = players', board = board', deck = rem, turnNum = turnNum game + 1}
+    where
+        players'    = map (\x -> if x == p then p' else x) (players game)
+        board'      = updateBoard b nextPos tile
+        -- nextPlayer  = getNextPlayer b p (players game)
+
+        nextPos = pos +++ gateOffs gate         -- find pos to place tile
+        (pos, gate) = movePlayer b (start p)    -- simulate the player
+        b = board game
+
+        p' = p {hand = hand'}
+            where hand' = (hand p \\ [tile]) ++ drawnCard
+        (drawnCard, rem) = drawNTiles 1 (deck game) 
+        p = getCurrentPlayer game
+
+
 -- | Gets the current player via ID
 getCurrentPlayer :: Game -> Player
 getCurrentPlayer g = players g !! getCurrentPlayerID g
@@ -103,28 +126,6 @@ numToStartPos v
     | v `elem` [bw*2 .. bw*4-1] = ((bw, (v - bw*2) `div` 2    ), 6 + v `mod` 2)
     | v `elem` [bw*4 .. bw*6-1] = ((    (v - bw*4) `div` 2, bw), 0 + v `mod` 2)
     | v `elem` [bw*6 .. bw*8-1] = ((-1, (v - bw*6) `div` 2    ), 2 + v `mod` 2)
-
--- | Places the tile in the current position (i.e. in front of the active player)
--- returning a new state which has updated
---      - the board (added the new tile)
---      - the current player's hand (removed played tile and drawn new)
---      - the deck (drawn from)
-gameMakeMove :: Tile -> Game -> Game
-gameMakeMove tile game = 
-    game{players = players', board = board', turnNum = turnNum game + 1}
-    where
-        players'    = map (\x -> if x == p then p' else x) (players game)
-        board'      = updateBoard b nextPos tile
-        -- nextPlayer  = getNextPlayer b p (players game)
-
-        nextPos = pos +++ gateOffs gate         -- find pos to place tile
-        (pos, gate) = movePlayer b (start p)    -- simulate the player
-        b = board game
-
-        p' = p {hand = hand'}
-            where hand' = (hand p \\ [tile]) ++ drawnCard
-        (drawnCard, rem) = drawNTiles 1 (deck game) 
-        p = getCurrentPlayer game
 
 -- | Gets the ID of the current player (that is not game over)
 getCurrentPlayerID :: Game -> Int
