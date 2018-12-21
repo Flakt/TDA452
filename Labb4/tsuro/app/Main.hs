@@ -29,19 +29,24 @@ main = do
 
     gameBox <- displayState game
 
-    containerAdd metaVBox gameBox
     containerAdd metaVBox buttonBox
+    containerAdd metaVBox gameBox
 
     btnRC <- buttonNew
     set btnRC [buttonLabel := "RCW"]
 
     btnRC `on` buttonActivated $ do
-        modifyIORef st rotateHand                   -- modify the state  
-        state <- readIORef st                       -- get the state from the monad
-        gameBox <- displayState state               -- render the new state
+        -- modifyIORef' st rotateHand                   -- modify the state  
+        gameSt <- readIORef st                       -- get the state from the monad
+        gen <- newStdGen
+        let (newState,_) = gameNew gen 4
+        -- writeIORef st newState
+        gameBox <- displayState newState               -- render the new state
         children <- containerGetChildren metaVBox   -- get children
-        containerRemove metaVBox (head children)    -- remove first child (hopefully the top)
+        containerRemove metaVBox (last children)    -- remove first child (hopefully the top)
         containerAdd metaVBox gameBox               -- add new render
+        print $ "fired rotate action" ++ show newState
+        widgetShowAll window
 
     containerAdd buttonBox btnRC
 
